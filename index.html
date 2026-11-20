@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evaluasi Kinerja Pendidikan 2026 - Cabdin Wilayah Jember</title>
+<style>
+.yr{display:flex;gap:8px}.yr span{flex:1;font-size:.72rem;color:#64748b}
+:root{--p:#1d4ed8;--bg:#f3f6fc;--b:#d5deef}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:var(--bg);color:#1e293b}
+header{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;padding:28px 20px;text-align:center}
+header h1{margin:0 0 6px;font-size:1.5rem}header p{margin:3px 0;opacity:.9}
+.wrap{max-width:960px;margin:auto;padding:16px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+nav button{border:1px solid var(--b);background:#fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:.85rem}
+nav button.on{background:var(--p);color:#fff;border-color:var(--p)}
+nav button.done::after{content:" ✓"}
+.card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:18px;margin-bottom:14px}
+.card h2{margin-top:0;color:var(--p);font-size:1.15rem}
+.card h3{margin:18px 0 8px;font-size:1rem;color:#334155}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+label{display:block;font-size:.82rem;font-weight:600;margin-bottom:3px}
+input,select,textarea{width:100%;padding:8px;border:1px solid #b9c5de;border-radius:8px;font:inherit}
+textarea{min-height:70px}
+.full{grid-column:1/-1}
+.btn{background:var(--p);color:#fff;border:0;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.95rem}
+.btn.sec{background:#e2e8f0;color:#1e293b}.btn.del{background:#fee2e2;color:#b91c1c;padding:4px 10px}
+.row{border:1px dashed #9fb2dd;border-radius:10px;padding:12px;margin:10px 0;background:#fafcff}
+.bar{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+.note{font-size:.82rem;background:#fff8e1;border:1px solid #f3d27a;padding:8px 10px;border-radius:8px;margin-bottom:12px}
+.closing{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px}
+.closing div{background:#eef3ff;border-radius:10px;padding:12px;text-align:center}
+.closing b{color:var(--p)}
+footer{text-align:center;padding:20px;font-weight:700;color:#1e3a8a}
+#msg{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:10px;color:#fff;display:none;z-index:9}
+</style>
+</head>
+<body>
+<header>
+<h1>EVALUASI KINERJA PENDIDIKAN SMA, SMK, DAN SLB 2026</h1>
+<p>Cabang Dinas Pendidikan Wilayah Jember – Kabupaten Jember &amp; Kabupaten Lumajang</p>
+<p><i>“Refleksi Capaian 2026, Penguatan Kinerja, dan Transformasi Pendidikan Menuju 2027.”</i></p>
+</header>
+<div class="wrap">
+<div class="card" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+<button type="button" class="btn" onclick="fillSample()">⚡ Isi Otomatis (Data Contoh)</button>
+<button type="button" class="btn sec" onclick="clearAll()">🗑 Kosongkan Semua</button>
+<button type="button" class="btn" style="background:#15803d" onclick="printRekap()">🖨 Cetak Bukti Pengisian (TTD Kepsek)</button>
+<a href="admin.html" class="btn sec" style="text-decoration:none;margin-left:auto">🔐 Login Admin</a>
+<span style="font-size:.82rem">Untuk melihat contoh/uji coba. Kosongkan sebelum mengisi data asli sekolah.</span>
+</div>
+<details class="card" style="border-color:#1d4ed8">
+<summary style="cursor:pointer;font-weight:700;color:#1d4ed8">📘 Petunjuk &amp; Contoh Pengisian (klik untuk membuka)</summary>
+<div style="font-size:.88rem;line-height:1.55;margin-top:10px">
+<p><b>Aturan umum:</b> isi angka dengan angka saja (tanpa titik/“Rp”/satuan). Isi <b>0</b> bila tidak ada. Bila tidak berlaku (mis. bengkel untuk SMA) isi 0 atau pilih N/A. Gunakan tombol <i>Berikutnya</i>; data baru terkirim setelah menekan <b>Kirim Semua Data</b> di langkah terakhir.</p>
+<p><b>Identitas:</b> NPSN <code>20523456</code> · Nama <code>SMKN 1 Contoh</code> · Jenjang <code>SMK</code> · Status <code>Negeri</code> · Kabupaten <code>Jember</code> · Pengisi <code>Budi Santoso, S.Pd (Operator)</code> · HP <code>081234567890</code></p>
+<p><b>Profil:</b> Rombel <code>36</code> · Siswa L <code>600</code> · Siswa P <code>520</code> · Guru PNS <code>40</code> · PPPK <code>12</code> · Tendik <code>15</code></p>
+<p><b>Anggaran (Rupiah, angka penuh):</b> BOS pagu <code>1250000000</code> · realisasi <code>1180000000</code></p>
+<p><b>Sarpras:</b> Kelas baik <code>28</code> · rusak ringan <code>5</code> · rusak sedang <code>2</code> · rusak berat <code>1</code> · progres revitalisasi <code>75</code> (artinya 75%)</p>
+<p><b>Mutu:</b> Peserta TKA <code>330</code> · rerata <code>62.5</code> · persentase kelulusan <code>100</code></p>
+<p><b>Program:</b> Bidang SAKTI <code>Robotika</code> · TEFA <code>Produk: jasa servis motor, omzet Rp45 juta</code></p>
+<p><b>Prestasi (satu baris = satu prestasi):</b></p>
+<table border="1" cellpadding="5" style="border-collapse:collapse;font-size:.8rem;width:100%">
+<tr style="background:#eef3ff"><th>Kategori</th><th>Peraih</th><th>Lomba</th><th>Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Bukti</th><th>Lanjut?</th></tr>
+<tr><td>A. Akademik</td><td>Siti Aminah (siswa)</td><td>OSN</td><td>Matematika</td><td>Kabupaten</td><td>Juara 1</td><td>drive.google.com/…</td><td>Ya – ke Provinsi</td></tr>
+<tr><td>B. SMK</td><td>Rizky Pratama</td><td>LKS DIKMEN</td><td>Web Technologies</td><td>Provinsi</td><td>Juara 2</td><td>drive.google.com/…</td><td>Ya – ke Nasional</td></tr>
+<tr><td>E. GTK</td><td>Dra. Lestari (guru)</td><td>GEMPITA Awards</td><td>Guru Inovatif</td><td>Provinsi</td><td>Finalis</td><td>drive.google.com/…</td><td>Tidak</td></tr>
+</table>
+<p><b>Rekap indikator (contoh OSN):</b> Mengikuti <code>12</code> · Juara Kab <code>3</code> · Lolos Prov <code>2</code> · Nasional <code>1</code> · Internasional <code>0</code></p>
+<p><b>Isian uraian (kotak teks):</b> tulis singkat &amp; konkret, mis. Permasalahan SDM: <i>“Kekurangan 3 guru Produktif TKJ; 2 guru belum bersertifikat pendidik.”</i> Solusi: <i>“Usulan pengangkatan guru PPPK dan pelatihan tersertifikasi industri.”</i></p>
+<p><b>Link bukti:</b> unggah sertifikat/foto ke Google Drive, atur akses “Siapa saja yang memiliki link”, lalu tempel link-nya.</p>
+</div>
+</details>
+<nav id="nav"></nav>
+<form id="form" onsubmit="return false"><div id="pages"></div></form>
+<div class="card" id="closing">
+<h2>Pesan Penutup</h2>
+<div class="closing">
+<div><b>2026: EVALUASI</b><br>Apa yang sudah kita capai?</div>
+<div><b>2026: REFLEKSI</b><br>Apa yang harus kita perbaiki?</div>
+<div><b>2027: AKSELERASI</b><br>Apa yang harus kita hasilkan?</div></div>
+</div>
+</div>
+<footer>SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</footer>
+<div id="msg"></div>
+
+<script>
+// ====== KONFIGURASI: tempel URL Web App Apps Script di sini ======
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygPZXx-j45O7XgHLgTGp_qbJbhILEypHJAYzvtqmyOwEWVtCeTH8kcfxKNrubicjT4sA/exec";
+
+const T = (n,l,x={})=>({n,l,t:'text',...x});
+const N = (n,l,x={})=>({n,l,t:'number',...x});
+const A = (n,l,x={})=>({n,l,t:'area',full:1,...x});
+const S = (n,l,o,x={})=>({n,l,t:'select',o,...x});
+const TINGKAT=['Kabupaten','Provinsi','Nasional','Internasional'];
+const PERINGKAT=['Juara 1 / Emas','Juara 2 / Perak','Juara 3 / Perunggu','Harapan / Favorit','Finalis','Peserta','Lolos ke tingkat berikutnya'];
+
+// ===== Indikator pembanding 2025 vs 2026 (nilai 2026 dihitung otomatis dari isian) =====
+const _n=(S,s,k)=>Number((S[s]||{})[k])||0, _sum=(S,s,k)=>(S[s]||[]).reduce((a,r)=>a+(Number(r[k])||0),0);
+const METRICS=[
+ {k:'siswa',l:'Jumlah siswa',f:S=>_n(S,'01_Profil','siswa_L')+_n(S,'01_Profil','siswa_P')},
+ {k:'rombel',l:'Jumlah rombel',f:S=>_n(S,'01_Profil','rombel')},
+ {k:'guru',l:'Jumlah guru',f:S=>_n(S,'01_Profil','guru_pns')+_n(S,'01_Profil','guru_pppk')+_n(S,'01_Profil','guru_gty')},
+ {k:'guru_sert',l:'Guru bersertifikat pendidik',f:S=>_n(S,'01_Profil','guru_sertifikasi')},
+ {k:'tendik',l:'Tenaga kependidikan',f:S=>_n(S,'01_Profil','tendik_pns')+_n(S,'01_Profil','tendik_non')},
+ {k:'kelas_baik',l:'Ruang kelas kondisi baik',f:S=>_n(S,'03_Sarpras_SDM','kelas_baik')},
+ {k:'kelas_rusak',l:'Ruang kelas rusak (ringan+sedang+berat)',good:-1,f:S=>_n(S,'03_Sarpras_SDM','kelas_rr')+_n(S,'03_Sarpras_SDM','kelas_rs')+_n(S,'03_Sarpras_SDM','kelas_rb')},
+ {k:'tka',l:'Rerata nilai TKA',avg:1,f:S=>_n(S,'04_Mutu','rerata_tka')},
+ {k:'lulus',l:'Persentase kelulusan (%)',avg:1,f:S=>_n(S,'04_Mutu','lulus_persen')},
+ {k:'lanjut',l:'Lulusan studi lanjut (PTN+PTS/Vokasi)',f:S=>_n(S,'04_Mutu','lulus_ptn')+_n(S,'04_Mutu','lulus_pts')},
+ {k:'kerja',l:'Lulusan bekerja/berwirausaha',f:S=>_n(S,'04_Mutu','lulus_kerja')+_n(S,'04_Mutu','lulus_wira')},
+ {k:'juara_kab',l:'Juara tingkat Kabupaten',f:S=>_sum(S,'06_Indikator_Prestasi','juara_kab')},
+ {k:'lolos_prov',l:'Lolos/Juara tingkat Provinsi',f:S=>_sum(S,'06_Indikator_Prestasi','lolos_prov')},
+ {k:'lolos_nas',l:'Menembus tingkat Nasional',f:S=>_sum(S,'06_Indikator_Prestasi','lolos_nas')},
+ {k:'juara_int',l:'Prestasi Internasional',f:S=>_sum(S,'06_Indikator_Prestasi','juara_int')},
+ {k:'pagu',l:'Total pagu anggaran (Rp)',rp:1,f:S=>_sum(S,'02_Anggaran_Rinci','pagu')},
+ {k:'real',l:'Total realisasi anggaran (Rp)',rp:1,f:S=>_sum(S,'02_Anggaran_Rinci','realisasi')}
+];
+function compareRows(S){
+  const o=S['10_Data2025']||{};
+  return METRICS.map(m=>{const a=o[m.k+'25'];return {m,v25:(a===undefined||a==='')?'':Number(a),v26:m.f(S)}});
+}
+const fmtN=(v,m)=>v===''?'-':(m.rp?'Rp ':'')+(m.rp?Math.round(v):+v).toLocaleString('id-ID',{maximumFractionDigits:2});
+
+const SECTIONS = [
+{id:'identitas',title:'Identitas Sekolah',single:true,groups:[{f:[
+  T('npsn','NPSN',{req:1}),T('nama','Nama Sekolah',{req:1}),
+  S('jenjang','Jenjang',['SMA','SMK','SLB'],{req:1}),S('status','Status',['Negeri','Swasta'],{req:1}),
+  S('kabupaten','Kabupaten',['Jember','Lumajang'],{req:1}),T('kecamatan','Kecamatan'),
+  T('kepsek','Nama Kepala Sekolah',{req:1}),T('nip','NIP Kepala Sekolah (jika ada)'),
+  T('pengisi','Nama Pengisi Data',{req:1}),T('kontak','No. HP/WA Pengisi',{req:1})]}]},
+
+{id:'01_Profil',title:'01. Profil dan Potret Pendidikan',groups:[
+ {h:'Jumlah Siswa, Guru, dan Tenaga Kependidikan',f:[
+  N('rombel','Jumlah Rombel'),N('siswa_L','Siswa Laki-laki'),N('siswa_P','Siswa Perempuan'),
+  N('siswa_abk','Siswa Berkebutuhan Khusus / Inklusi'),N('siswa_kurangmampu','Siswa Kurang Mampu (KIP/PIP)'),
+  N('guru_pns','Guru PNS'),N('guru_pppk','Guru PPPK'),N('guru_gty','Guru Yayasan/GTT'),N('guru_sertifikasi','Guru Bersertifikat Pendidik'),
+  N('tendik_pns','Tendik PNS/PPPK'),N('tendik_non','Tendik Non-ASN')]},
+ {h:'Sebaran dan Kondisi Satuan Pendidikan',f:[
+  T('akreditasi','Akreditasi (A/B/C/Belum)'),T('listrik_internet','Listrik & Internet (daya / bandwidth)'),
+  S('lokasi','Lokasi',['Perkotaan','Pedesaan','Terpencil/3T']),T('jarak','Jarak ke Cabdin (km)'),
+  A('kebutuhan','Peta kebutuhan & pemerataan layanan (daya tampung, zonasi, wilayah belum terlayani, dll.)')]}]},
+
+{id:'02_Anggaran',title:'02. Anggaran dan Tata Kelola',custom:'anggaran',groups:[
+ {h:'Pengelolaan, Pertanggungjawaban & Audit',f:[
+  S('lpj','Status Pertanggungjawaban (LPJ) BOS/BPOPP',['Lengkap & tepat waktu','Lengkap, terlambat','Belum lengkap']),
+  S('temuan','Ada temuan pemeriksaan/audit 2026?',['Tidak ada','Ada – sudah ditindaklanjuti','Ada – proses','Ada – belum']),
+  A('temuan_uraian','Uraian temuan & tindak lanjut'),
+  A('anggaran_masalah','Kendala pengelolaan anggaran')]}]},
+
+{id:'03_Sarpras_SDM',title:'03. Sarana Prasarana dan SDM',groups:[
+ {h:'Kondisi Gedung & Fasilitas (jumlah unit)',f:[
+  N('kelas_baik','Ruang Kelas – Baik'),N('kelas_rr','Ruang Kelas – Rusak Ringan'),N('kelas_rs','Ruang Kelas – Rusak Sedang'),N('kelas_rb','Ruang Kelas – Rusak Berat'),
+  N('lab_ada','Laboratorium (jumlah)'),N('lab_layak','Laboratorium layak pakai'),
+  N('bengkel_ada','Bengkel/Ruang Praktik (SMK)'),N('bengkel_layak','Bengkel layak pakai'),
+  N('slb_fasilitas','Fasilitas SLB (ruang terapi, alat bantu, dll.) – jumlah'),
+  N('toilet','Toilet layak'),T('perpus','Kondisi perpustakaan'),
+  A('sarpras_butuh','Kebutuhan prioritas sarpras')]},
+ {h:'Revitalisasi & Pembangunan',f:[
+  S('revit_status','Penerima revitalisasi 2026?',['Ya','Tidak','Usulan']),T('revit_item','Jenis pekerjaan revitalisasi / pembangunan'),
+  N('revit_progres','Progres fisik (%)',{max:100}),A('revit_kendala','Kendala pelaksanaan')]},
+ {h:'GTK: Ketersediaan, Pemerataan, Kompetensi',f:[
+  N('guru_kurang','Kekurangan Guru (orang)'),N('guru_lebih','Kelebihan Guru (orang)'),T('mapel_kurang','Mata pelajaran yang kekurangan guru'),
+  N('guru_linier','Guru Linier dengan Mapel'),N('guru_s2','Guru Berpendidikan S2/S3'),
+  N('guru_pelatihan','Guru Mengikuti Pelatihan 2026'),N('kepsek_pelatihan','Pelatihan Kepala Sekolah (jml kegiatan)'),
+  A('pengembangan','Pengembangan profesionalitas kepala sekolah & guru (PPG, komunitas belajar, dll.)')]}]},
+
+{id:'04_Mutu',title:'04. Mutu Pembelajaran dan Hasil Pendidikan',groups:[
+ {h:'Kurikulum, Deep Learning, Digitalisasi & AI',f:[
+  S('kurikulum','Kurikulum yang diterapkan',['Kurikulum Merdeka','Kurikulum Merdeka + Deep Learning','Lainnya']),
+  N('guru_dl','Guru yang menerapkan Deep Learning'),N('guru_ai','Guru yang memanfaatkan AI'),
+  T('platform','Platform digital digunakan (LMS, Rumah Pendidikan, dll.)'),N('perangkat','Jumlah perangkat digital (laptop/chromebook/IFP)'),
+  A('inovasi_digital','Praktik digitalisasi & pemanfaatan AI')]},
+ {h:'TKA, Asesmen, Kelulusan',f:[
+  N('peserta_tka','Peserta TKA'),N('rerata_tka','Rerata Nilai TKA'),T('tka_mapel','Rerata per mapel (jika ada)'),
+  N('lulus_n','Jumlah Peserta Ujian Akhir'),N('lulus_persen','Persentase Kelulusan (%)',{max:100}),
+  A('hasil_belajar','Analisis hasil belajar / asesmen')]},
+ {h:'Literasi, Numerasi, Karakter, Budaya Sekolah',f:[
+  T('literasi','Capaian literasi (kategori / skor)'),T('numerasi','Capaian numerasi (kategori / skor)'),
+  T('iklim','Iklim keamanan/inklusivitas (skor Rapor Pendidikan)'),
+  A('karakter','Program penguatan karakter & budaya sekolah (anti-perundungan, 7 kebiasaan, dll.)')]},
+ {h:'Lulusan (tahun lulus terakhir)',f:[
+  N('lulus_ptn','Lulusan diterima PTN'),N('lulus_pts','Lulusan melanjutkan PTS/Vokasi'),N('lulus_kerja','Lulusan bekerja'),
+  N('lulus_wira','Lulusan berwirausaha'),N('lulus_belum','Belum bekerja/melanjutkan'),
+  A('kemandirian','Kemandirian lulusan (khusus SLB: vokasional, kemandirian hidup)')]}]},
+
+{id:'05_Program',title:'05. Program Unggulan dan Inovasi',groups:[
+ {h:'Program Unggulan (isi status & uraian singkat)',f:[
+  S('sakti','SAKTI (Satu Sekolah Satu Prestasi)',['Ada','Belum']),T('sakti_ket','Bidang prestasi SAKTI sekolah'),
+  S('gempita','GEMPITA 2026',['Berpartisipasi','Belum']),T('gempita_ket','Keterangan GEMPITA'),
+  S('smkbisa','SMK BISA',['Ya','Tidak','N/A']),S('smkpk','SMK Pusat Keunggulan',['Ya','Tidak','N/A']),
+  S('tefa','Teaching Factory (TEFA)',['Ada','Belum','N/A']),T('tefa_ket','Produk/jasa TEFA & omzet 2026'),
+  S('fiksi','FIKSI',['Berpartisipasi','Belum','N/A']),T('wirausaha','Kewirausahaan siswa (jumlah unit usaha, omzet)'),
+  S('jgg','JELAS GO GLOBAL',['Berpartisipasi','Belum']),T('jgg_ket','Keterangan JELAS GO GLOBAL')]},
+ {h:'Inovasi & Layanan Khusus',f:[
+  A('inovasi','Inovasi pembelajaran & praktik baik sekolah'),
+  A('inklusif','Penguatan layanan pendidikan khusus & inklusif (jumlah ABK, GPK, aksesibilitas)'),
+  T('dok_program','Link dokumentasi (Drive/YouTube/IG)',{full:1})]}]},
+
+{id:'06_Prestasi',title:'06. Prestasi Siswa dan GTK 2025 &amp; 2026',custom:'prestasi'},
+
+{id:'07_Kemitraan',title:'07. Kemitraan dan Kolaborasi',groups:[{f:[
+  N('dudi_n','Jumlah mitra DUDI'),A('dudi','Kerja sama DUDI (nama mitra, bentuk: magang, kelas industri, rekrutmen)'),
+  N('pt_n','Jumlah mitra Perguruan Tinggi'),A('pt','Kemitraan perguruan tinggi'),
+  A('pemkab','Kolaborasi pemerintah kabupaten & masyarakat'),
+  A('global','Kerja sama nasional & internasional'),
+  A('ortu','Peran orang tua (komite, paguyuban)'),A('alumni','Peran alumni (ikatan alumni, beasiswa, mentoring)')]}]},
+
+{id:'08_Evaluasi',title:'08. Evaluasi dan Permasalahan',groups:[{f:[
+  A('eval_kinerja','Evaluasi kinerja sekolah 2026 (capaian utama)'),
+  A('gap','Kesenjangan mutu & layanan yang teridentifikasi'),
+  A('m_anggaran','Permasalahan anggaran'),A('m_sdm','Permasalahan SDM'),
+  A('m_sarpras','Permasalahan sarpras'),A('m_belajar','Permasalahan pembelajaran'),
+  A('solusi','Solusi & tindak lanjut peningkatan mutu'),
+  A('dukungan','Dukungan yang diharapkan dari Cabdin')]}]},
+
+{id:'09_Proyeksi2027',title:'09. Proyeksi dan Target Kinerja 2027',groups:[{f:[
+  A('prioritas','Prioritas peningkatan mutu pendidikan'),
+  N('t_prestasi_juara','Target jumlah juara tingkat Kabupaten'),N('t_prestasi_prov','Target peserta lolos Provinsi'),
+  N('t_prestasi_nas','Target peserta tingkat Nasional'),N('t_prestasi_int','Target prestasi Internasional'),
+  A('t_prestasi','Strategi peningkatan prestasi siswa & GTK'),
+  N('t_tka','Target rerata TKA 2027'),N('t_lulus','Target persentase keterserapan lulusan (%)'),
+  A('t_kompetensi','Penguatan kompetensi lulusan'),
+  A('t_sarpras','Pemerataan sarana & kualitas layanan (usulan)'),
+  A('t_tatakelola','Penguatan tata kelola & akuntabilitas'),
+  A('t_indikator','Target & indikator keberhasilan 2027 lainnya')]}]},
+
+{id:'10_Data2025',title:'10. Data Pembanding Tahun 2025',groups:[{h:'Isi data tahun 2025 sebagai pembanding. Nilai 2026 dihitung otomatis dari isian di bagian sebelumnya. Kosongkan bila tidak ada data.',f:METRICS.map(m=>N(m.k+'25',m.l+' – 2025'))}]}
+];
+
+const KATEGORI=['A. Akademik & Talenta Siswa','B. SMK','C. SLB','D. Nonakademik Lainnya','E. Guru/Kepala Sekolah/GTK'];
+const LOMBA_HINT='OSN, O2SN, FLS3N, OPSI, LDBI, NSDC, TALENTA SISWA SMA Awards, LKS DIKMEN, FIKSI, Business Plan, GEMPITA Awards, dll.';
+const PRESTASI_FIELDS=[
+  S('tahun','Tahun',['2025','2026'],{req:1}),S('kategori','Kategori',KATEGORI),S('peran','Peraih Prestasi',['Siswa','Guru','Kepala Sekolah','Tenaga Kependidikan']),
+  T('nama_peraih','Nama siswa/guru berprestasi',{req:1}),T('lomba','Nama Lomba',{req:1,ph:LOMBA_HINT}),
+  T('bidang','Bidang Kompetisi',{req:1}),S('tingkat','Tingkat',TINGKAT,{req:1}),
+  S('peringkat','Peringkat / Status',PERINGKAT,{req:1}),T('penyelenggara','Penyelenggara & tempat'),
+  T('bukti','Link bukti sertifikat (Drive)',{req:1}),T('dokumentasi','Link dokumentasi/foto'),
+  S('lanjut','Mengantarkan peserta ke tingkat berikutnya?',['Tidak','Ya – ke Provinsi','Ya – ke Nasional','Ya – ke Internasional'])];
+const INDIKATOR=[N('ikut','Jumlah yang mengikuti'),N('juara_kab','Juara tingkat Kabupaten'),N('lolos_prov','Lolos/Juara tingkat Provinsi'),
+  N('lolos_nas','Menembus Nasional'),N('juara_int','Prestasi Internasional')];
+
+const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild};
+function fieldHTML(f,pre='',nd=false){
+  const nm=pre+f.n,rq=f.req?' required':'';
+  let c;
+  if(f.t==='select')c=`<select name="${nm}"${rq}><option value="">-- pilih --</option>${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`;
+  else if(f.t==='number'&&!nd)return `<div class="${f.full?'full':''}"><label>${f.l}</label><div class="yr"><span>2025<input type="number" min="0" step="any" name="${nm}_2025"></span><span>2026<input type="number" min="0" step="any" name="${nm}_2026"></span></div></div>`;
+  else if(f.t==='area')c=`<textarea name="${nm}"${rq}></textarea>`;
+  else c=`<input type="${f.t==='number'?'number':'text'}" ${f.t==='number'?`min="0" ${f.max?`max="${f.max}"`:''} step="any"`:''} name="${nm}" placeholder="${f.ph||''}"${rq}>`;
+  return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label>${c}</div>`;
+}
+const pages=document.getElementById('pages'),nav=document.getElementById('nav');
+let cur=0;const done=new Set();
+
+SECTIONS.forEach((s,i)=>{
+  const p=document.createElement('section');p.className='card';p.dataset.i=i;p.dataset.id=s.id;
+  let h=`<h2>${s.title}</h2>`;
+  if(s.custom==='prestasi'){
+    h+=`<div class="note"><b>Data wajib prestasi:</b> nama sekolah &amp; status (otomatis dari Identitas), nama peraih, lomba &amp; bidang, tingkat, peringkat, bukti sertifikat &amp; dokumentasi, dan apakah sekolah mengantarkan peserta ke tingkat berikutnya. Satu baris = satu prestasi.</div>
+    <h3>Indikator Utama per Kategori Lomba (rekap sekolah)</h3>
+    <div class="grid" id="ind"></div><div id="indRows"></div>
+    <button type="button" class="btn sec" onclick="addInd()">+ Tambah rekap lomba</button>
+    <h3>Daftar Prestasi Rinci</h3><div id="prestasiRows"></div>
+    <button type="button" class="btn sec" onclick="addPrestasi()">+ Tambah Prestasi</button>`;
+  } else {
+    if(s.custom==='anggaran')h+=`<h3>Pagu dan Realisasi Anggaran 2026 (Rupiah, angka penuh)</h3>
+    <div id="angRows"></div>
+    <button type="button" class="btn sec" onclick="addAng()">+ Tambah Sumber Dana</button>
+    <div class="grid" style="margin-top:14px;background:#eef3ff;padding:12px;border-radius:10px">
+      <div><label>TOTAL Realisasi</label><input name="total_real" readonly></div>
+      <div><label>TOTAL % Realisasi</label><input name="total_persen" readonly></div>
+      <div><label>Sisa Anggaran</label><input name="total_sisa" readonly></div></div>`;
+    s.groups.forEach(g=>{h+=(g.h?`<h3>${g.h}</h3>`:'')+`<div class="grid">${g.f.map(f=>fieldHTML(f,'',s.id.startsWith('09'))).join('')}</div>`});
+  }
+  const last=i===SECTIONS.length-1;
+  h+=`<div class="bar"><button type="button" class="btn sec" ${i?'':'disabled'} onclick="go(${i-1})">← Sebelumnya</button>`+
+     (last?`<button type="button" class="btn" id="submit" onclick="submitAll()">Kirim Semua Data</button>`:`<button type="button" class="btn" onclick="go(${i+1})">Berikutnya →</button>`)+`</div>`;
+  p.innerHTML=h;pages.appendChild(p);
+  const b=document.createElement('button');b.type='button';b.textContent=s.title.replace(/^(\d+)\.\s*/,'$1 ').split(' ').slice(0,3).join(' ');b.onclick=()=>go(i);nav.appendChild(b);
+});
+
+function addInd(){const d=el(`<div class="row"><div class="grid">${[S('tahun','Tahun',['2025','2026']),S('lomba_rekap','Lomba / Kompetisi',['OSN','O2SN','FLS3N','OPSI','LDBI','NSDC','TALENTA SISWA SMA','LKS DIKMEN','FIKSI','Business Plan','O2SN PK','FLS3N PK','GEMPITA Awards','Lainnya']),...INDIKATOR].map(f=>fieldHTML(f,'',true)).join('')}</div><button type="button" class="btn del" onclick="this.parentNode.remove()">Hapus</button></div>`);document.getElementById('indRows').appendChild(d)}
+function addPrestasi(){const d=el(`<div class="row"><div class="grid">${PRESTASI_FIELDS.map(f=>fieldHTML(f,'',true)).join('')}</div><button type="button" class="btn del" onclick="this.parentNode.remove()">Hapus</button></div>`);document.getElementById('prestasiRows').appendChild(d)}
+addInd();addPrestasi();
+
+// ===== Anggaran: baris sumber dana + persentase otomatis =====
+function addAng(nama=''){
+  const fixed=!!nama;
+  const d=el(`<div class="row"><div class="grid">
+   <div><label>Sumber Dana</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
+   <div><label>Pagu (Rp)</label><input type="number" min="0" name="pagu"></div>
+   <div><label>Realisasi (Rp)</label><input type="number" min="0" name="realisasi"></div>
+   <div><label>% Realisasi</label><input name="persen" readonly placeholder="otomatis"></div></div>
+   ${fixed?'':'<button type="button" class="btn del" onclick="this.parentNode.remove();calcAng()">Hapus</button>'}</div>`);
+  document.getElementById('angRows').appendChild(d);
+}
+['BOS','BPOPP','DAK','Revitalisasi','Bantuan Pendidikan Lain'].forEach(addAng);
+const rp=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
+function calcAng(){
+  let tp=0,tr=0;
+  document.querySelectorAll('#angRows .row').forEach(r=>{
+    const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
+    r.querySelector('[name=persen]').value=p?(rl/p*100).toFixed(2)+'%':'';
+    tp+=p;tr+=rl;
+  });
+  const q=n=>document.querySelector(`[name=${n}]`);
+  q('total_real').value=tr||'';
+  q('total_persen').value=tp?(tr/tp*100).toFixed(2)+'%':'';q('total_sisa').value=tp?tp-tr:'';
+}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#angRows'))calcAng()});
+
+// ===== Muat data lama berdasarkan NPSN (untuk revisi) =====
+pages.children[0].insertAdjacentHTML('afterbegin',`<div class="note" style="background:#e8f5e9;border-color:#8bc34a">
+<b>Sudah pernah mengisi?</b> Ketik NPSN pada kolom di bawah, lalu klik <button type="button" class="btn" style="padding:4px 12px" onclick="loadMine()">📥 Muat Data Saya</button>
+ untuk menampilkan data sebelumnya. Ubah seperlunya lalu kirim — data lama otomatis ditimpa.</div>`);
+function fillRow(r,obj){Object.keys(obj).forEach(k=>{const x=r.querySelector(`[name="${k}"]`);if(x&&!x.readOnly&&obj[k]!=='')setVal(x,obj[k])})}
+function fillPage(p,obj){p.querySelectorAll('[name]').forEach(x=>{if(x.closest('.row')||x.readOnly)return;const v=obj[x.name];if(v!==undefined&&v!=='')setVal(x,v)})}
+async function loadMine(){
+  const npsn=document.querySelector('[name=npsn]').value.trim();
+  if(!npsn){toast('Isi NPSN terlebih dahulu',false);return}
+  if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi',false);return}
+  try{
+    const r=await (await fetch(SCRIPT_URL+'?npsn='+encodeURIComponent(npsn))).json();
+    if(!r.ok||!r.found){toast('Data untuk NPSN '+npsn+' belum ada. Silakan isi baru.',false);return}
+    const S=r.sections,pg={};[...pages.children].forEach(p=>pg[p.dataset.id]=p);
+    fillPage(pages.children[0],r.sekolah);
+    Object.keys(S).forEach(name=>{
+      const rows=S[name];
+      if(name==='06_Prestasi'){document.getElementById('prestasiRows').innerHTML='';rows.forEach(o=>{addPrestasi();const b=document.getElementById('prestasiRows');fillRow(b.lastElementChild,o)})}
+      else if(name==='06_Indikator_Prestasi'){document.getElementById('indRows').innerHTML='';rows.forEach(o=>{addInd();const b=document.getElementById('indRows');fillRow(b.lastElementChild,o)})}
+      else if(name==='02_Anggaran_Rinci'){
+        document.querySelectorAll('#angRows .row').forEach(rw=>{const sm=rw.querySelector('[name=sumber]');if(!sm.readOnly)rw.remove()});
+        rows.forEach(o=>{
+          let rw=[...document.querySelectorAll('#angRows .row')].find(x=>{const s=x.querySelector('[name=sumber]');return s.readOnly&&s.value===o.sumber});
+          if(!rw){addAng();rw=document.getElementById('angRows').lastElementChild}
+          fillRow(rw,o);
+        });calcAng();
+      }
+      else if(pg[name])fillPage(pg[name],rows[0]);
+    });
+    toast('Data berhasil dimuat. Silakan revisi lalu kirim.',true);
+  }catch(e){toast('Gagal memuat data: '+e,false)}
+}
+
+// ===== Cetak Bukti Pengisian (TTD Kepala Sekolah) =====
+let lastSent=null;
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function printRekap(d){
+  if(!d||d.type){ // dipanggil dari tombol: pakai isian saat ini, atau kiriman terakhir bila form kosong
+    d=build();
+    if(!d.sekolah.npsn){try{d=JSON.parse(localStorage.getItem('cabdin2026_last'))||d}catch(e){}}
+  }
+  const s=d.sekolah,S=d.sections;
+  if(!s.npsn||!s.nama){toast('Isi Identitas Sekolah (NPSN & nama) dulu, atau kirim data terlebih dahulu.',false);go(0);return}
+  const n=(sec,k)=>Number((S[sec]||{})[k])||0, rpf=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
+  const NAMES=[['01_Profil','01 Profil & Potret Pendidikan'],['02_Anggaran','02 Anggaran & Tata Kelola'],['03_Sarpras_SDM','03 Sarpras & SDM'],['04_Mutu','04 Mutu Pembelajaran & Hasil'],['05_Program','05 Program Unggulan & Inovasi'],['06_Prestasi','06 Prestasi Siswa & GTK'],['07_Kemitraan','07 Kemitraan & Kolaborasi'],['08_Evaluasi','08 Evaluasi & Permasalahan'],['09_Proyeksi2027','09 Proyeksi & Target 2027']];
+  const filled=k=>k==='06_Prestasi'?!!(S['06_Prestasi']||S['06_Indikator_Prestasi']):!!S[k];
+  const ang=S['02_Anggaran_Rinci']||[],pr=S['06_Prestasi']||[],ind=S['06_Indikator_Prestasi']||[];
+  const tp=ang.reduce((a,r)=>a+(+r.pagu||0),0),tr=ang.reduce((a,r)=>a+(+r.realisasi||0),0);
+  const tgl=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  // ---- Rekapitulasi isian laporan (format 01–09 sesuai agenda) ----
+  const tbl=rows=>rows.length?`<table><tr><th width="45%">Uraian</th><th>Isian</th></tr>${rows.map(([a,b])=>`<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>';
+  const win=r=>/Juara|Emas|Perak|Perunggu|Harapan/.test(r.peringkat||'');
+  let rekap=`<div style="page-break-before:always"></div><h2>REKAPITULASI ISIAN LAPORAN</h2><h3>${esc(s.nama)} – NPSN ${esc(s.npsn)}</h3><br>`;
+  SECTIONS.slice(1).filter(x=>x.id!=='10_Data2025').forEach(sec=>{
+    rekap+=`<h4 style="background:#ddd;padding:3px 6px;margin:14px 0 4px">${esc(sec.title.toUpperCase())}</h4>`;
+    if(sec.custom==='prestasi'){
+      KATEGORI.forEach(kat=>{const L=pr.filter(r=>r.kategori===kat);
+        rekap+=`<b>${esc(kat)}</b>`+(L.length?`<table><tr><th>No</th><th>Nama (Peran)</th><th>Lomba / Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Lanjut</th><th>Bukti</th></tr>${L.map((r,i)=>`<tr><td align="center">${i+1}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)} – ${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td style="word-break:break-all;font-size:8pt">${esc(r.bukti)}</td></tr>`).join('')}</table>`:'<p style="margin:2px"><i>– belum ada –</i></p>')});
+      rekap+=`<b>F. Pemetaan Capaian Prestasi Berjenjang</b><table><tr><th>Tingkat</th><th>Jumlah Prestasi</th><th>Juara / Medali</th><th>Finalis</th><th>Lolos ke Tingkat Berikutnya</th></tr>${TINGKAT.map(t=>{const L=pr.filter(r=>r.tingkat===t);return `<tr><td>${t}</td><td align="center">${L.length}</td><td align="center">${L.filter(win).length}</td><td align="center">${L.filter(r=>/Finalis/.test(r.peringkat||'')).length}</td><td align="center">${L.filter(r=>r.lanjut&&r.lanjut!=='Tidak').length}</td></tr>`}).join('')}</table>`;
+      rekap+=`<b>Indikator Utama (rekap per lomba)</b>`+(ind.length?`<table><tr><th>Lomba</th><th>Mengikuti</th><th>Juara Kab</th><th>Lolos Prov</th><th>Nasional</th><th>Internasional</th></tr>${ind.map(r=>`<tr><td>${esc(r.lomba_rekap)}</td><td align="center">${esc(r.ikut)}</td><td align="center">${esc(r.juara_kab)}</td><td align="center">${esc(r.lolos_prov)}</td><td align="center">${esc(r.lolos_nas)}</td><td align="center">${esc(r.juara_int)}</td></tr>`).join('')}</table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
+      return;
+    }
+    const o=S[sec.id]||{};
+    if(sec.custom==='anggaran'){
+      rekap+=`<b>Pagu dan Realisasi Anggaran 2026</b>`+(ang.length?`<table><tr><th>Sumber Dana</th><th>Pagu</th><th>Realisasi</th><th>%</th></tr>${ang.map(r=>`<tr><td>${esc(r.sumber)}</td><td align="right">${rpf(+r.pagu||0)}</td><td align="right">${rpf(+r.realisasi||0)}</td><td align="center">${+r.pagu?((+r.realisasi||0)/+r.pagu*100).toFixed(2)+'%':'-'}</td></tr>`).join('')}<tr><th>TOTAL</th><th align="right">${rpf(tp)}</th><th align="right">${rpf(tr)}</th><th>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</th></tr></table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
+    }
+    sec.groups.forEach(g=>{
+      if(g.h)rekap+=`<b>${esc(g.h)}</b>`;
+      rekap+=tbl(g.f.filter(f=>o[f.n]!==undefined&&o[f.n]!=='').map(f=>[f.l,o[f.n]]));
+    });
+  });
+  rekap+=`<h4 style="background:#ddd;padding:3px 6px;margin:14px 0 4px">PERBANDINGAN DATA TAHUN 2025 DAN 2026</h4>`+(()=>{
+    const C=compareRows(S);
+    if(!C.some(r=>r.v25!==''))return '<p style="margin:2px"><i>– data pembanding 2025 belum diisi (bagian 10) –</i></p>';
+    return `<table><tr><th>Indikator</th><th>2025</th><th>2026</th><th>Selisih</th><th>Perubahan</th></tr>${C.filter(r=>r.v25!=='').map(r=>{
+      const d=r.v26-r.v25,good=(r.m.good||1)*d,col=good>0?'#15803d':good<0?'#b91c1c':'#444',ar=d>0?'▲':d<0?'▼':'●';
+      return `<tr><td>${esc(r.m.l)}</td><td align="right">${fmtN(r.v25,r.m)}</td><td align="right">${fmtN(r.v26,r.m)}</td><td align="right" style="color:${col}">${ar} ${fmtN(Math.abs(d),r.m)}</td><td align="center" style="color:${col}">${r.v25?(d/r.v25*100).toFixed(1)+'%':'-'}</td></tr>`}).join('')}</table><p style="font-size:9pt;margin:2px">Hijau = membaik, merah = menurun (untuk ruang kelas rusak, penurunan dianggap membaik).</p>`;
+  })();
+  rekap+=`<h4 style="background:#ddd;padding:3px 6px;margin:14px 0 4px">KERANGKA EVALUASI KINERJA</h4><table><tr><th>INPUT</th><th>PROSES</th><th>OUTPUT</th></tr><tr><td>Anggaran, SDM, sarpras, dan kebijakan (bagian 02, 03)</td><td>Pelaksanaan program dan pembelajaran (bagian 04, 05)</td><td>Prestasi, kompetensi, dan dampak lulusan (bagian 04, 06)</td></tr></table>
+  <table><tr><th>2026: EVALUASI</th><th>2026: REFLEKSI</th><th>2027: AKSELERASI</th></tr><tr><td align="center">Apa yang sudah kita capai?</td><td align="center">Apa yang harus kita perbaiki?</td><td align="center">Apa yang harus kita hasilkan?</td></tr></table>
+  <p align="center"><b>SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</b></p>`;
+  const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Bukti Pengisian - ${esc(s.nama)}</title>
+<style>body{font-family:'Times New Roman',serif;font-size:12pt;margin:24px 40px;color:#000}
+h2,h3{text-align:center;margin:2px}h3{font-size:12pt;font-weight:normal}hr{border:1.5px solid #000}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:10.5pt}td,th{border:1px solid #000;padding:3px 6px;vertical-align:top}th{background:#eee}
+.k td{border:0;padding:1px 4px}.sig{display:flex;justify-content:space-between;margin-top:26px;page-break-inside:avoid}.sig div{width:45%;text-align:center}
+@media print{.np{display:none}}</style></head><body>
+<h2>CABANG DINAS PENDIDIKAN WILAYAH JEMBER</h2><h3>Kabupaten Jember – Kabupaten Lumajang</h3><hr>
+<h2>BUKTI PENGISIAN DATA</h2><h3><b>Evaluasi Kinerja Pendidikan SMA, SMK, dan SLB Tahun 2026</b></h3><br>
+<table class="k"><tr><td width="28%">Nama Sekolah</td><td>: ${esc(s.nama)}</td></tr><tr><td>NPSN</td><td>: ${esc(s.npsn)}</td></tr>
+<tr><td>Jenjang / Status</td><td>: ${esc(s.jenjang)} / ${esc(s.status)}</td></tr><tr><td>Kabupaten / Kecamatan</td><td>: ${esc(s.kabupaten)} / ${esc(s.kecamatan||'-')}</td></tr>
+<tr><td>Pengisi Data</td><td>: ${esc(s.pengisi)} (${esc(s.kontak)})</td></tr><tr><td>Tanggal Cetak</td><td>: ${tgl}</td></tr></table>
+<b>A. Status Pengisian</b><table><tr><th>Bagian</th><th width="90">Status</th></tr>${NAMES.map(([k,t])=>`<tr><td>${t}</td><td align="center">${filled(k)?'✔ Terisi':'– Belum'}</td></tr>`).join('')}</table>
+<b>B. Ringkasan Data</b><table>
+<tr><td>Jumlah siswa (L+P)</td><td>${n('01_Profil','siswa_L')+n('01_Profil','siswa_P')}</td><td>Jumlah rombel</td><td>${n('01_Profil','rombel')}</td></tr>
+<tr><td>Guru (PNS+PPPK+Yayasan/GTT)</td><td>${n('01_Profil','guru_pns')+n('01_Profil','guru_pppk')+n('01_Profil','guru_gty')}</td><td>Tendik</td><td>${n('01_Profil','tendik_pns')+n('01_Profil','tendik_non')}</td></tr>
+<tr><td>Peserta / rerata TKA</td><td>${n('04_Mutu','peserta_tka')} / ${n('04_Mutu','rerata_tka')}</td><td>Kelulusan (%)</td><td>${n('04_Mutu','lulus_persen')}</td></tr>
+<tr><td>Jumlah prestasi dilaporkan</td><td>${pr.length}</td><td>Total realisasi anggaran</td><td>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</td></tr></table>
+${rekap}
+<p style="text-align:justify">Dengan ini kami menyatakan bahwa data yang disampaikan melalui aplikasi Evaluasi Kinerja Pendidikan 2026 adalah benar dan dapat dipertanggungjawabkan, serta bukti sertifikat dan dokumentasi tersedia di sekolah.</p>
+<div class="sig"><div><br>Pengisi Data,<br><br><br><br><br><u>${esc(s.pengisi)}</u></div>
+<div>............................, ${tgl}<br>Kepala Sekolah,<br><br><br><br>(Stempel)<br><u><b>${esc(s.kepsek||'..............................')}</b></u><br>${s.nip?'NIP. '+esc(s.nip):''}</div></div>
+<p class="np" style="text-align:center"><button onclick="print()" style="padding:8px 20px">Cetak / Simpan PDF</button></p>
+<script>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){toast('Pop-up diblokir browser. Izinkan pop-up untuk situs ini.',false);return}
+  w.document.write(html);w.document.close();
+}
+
+// ===== Isi otomatis dengan data contoh =====
+const SAMPLE={npsn:'20523456',nama:'SMKN 1 CONTOH (UJI COBA)',jenjang:'SMK',status:'Negeri',kabupaten:'Jember',kecamatan:'Kaliwates',
+ pengisi:'Budi Santoso, S.Pd',kepsek:'Drs. Ahmad Fauzi, M.Pd',nip:'196801011990031005',kontak:'081234567890',akreditasi:'A',rombel:36,siswa_L:600,siswa_P:520,
+ bos_pagu:1250000000,bos_real:1180000000,bpopp_pagu:800000000,bpopp_real:760000000,dak_pagu:500000000,dak_real:450000000,
+ revit_pagu:1500000000,revit_real:1100000000,bantuan_pagu:100000000,bantuan_real:90000000,
+ rerata_tka:62.5,lulus_persen:100,revit_progres:75,t_lulus:80,t_tka:65,rerata:62.5,
+ lomba:'OSN',bidang:'Matematika',nama_peraih:'Siti Aminah',bukti:'https://drive.google.com/contoh',
+ dokumentasi:'https://drive.google.com/contoh-foto',dok_program:'https://drive.google.com/contoh-dok'};
+function setVal(x,v){x.value=v;x.dispatchEvent(new Event('input',{bubbles:true}))}
+function fillSample(){
+  if(!confirm('Isi semua kolom dengan DATA CONTOH? Isian yang sudah ada akan tertimpa.'))return;
+  while(document.querySelectorAll('#prestasiRows .row').length<3)addPrestasi();
+  while(document.querySelectorAll('#angRows .row').length<6)addAng();
+  document.querySelectorAll('#angRows .row').forEach((r,i)=>{
+    const pg=[1250000000,800000000,500000000,1500000000,100000000,50000000][i];
+    const sm=r.querySelector('[name=sumber]');if(!sm.value)setVal(sm,'Dana Komite (contoh)');
+    setVal(r.querySelector('[name=pagu]'),pg);setVal(r.querySelector('[name=realisasi]'),Math.round(pg*(0.7+0.05*i)));
+  });
+  document.querySelectorAll('#pages [name]').forEach(x=>{
+    if(x.readOnly||x.closest('#angRows'))return;
+    const n=x.name;let v;
+    if(n in SAMPLE&&!x.closest('.row'))v=SAMPLE[n];
+    else if(x.tagName==='SELECT'){const o=[...x.options].filter(o=>o.value||o.text.trim()&&!o.text.startsWith('--'));v=(o[1]||o[0]).value||(o[1]||o[0]).text}
+    else if(x.type==='number')v=x.max?80:Math.floor(Math.random()*40)+5;
+    else if(x.tagName==='TEXTAREA')v='Contoh uraian: '+x.closest('div').querySelector('label').textContent.replace(' *','')+'.';
+    else v='Contoh '+x.closest('div').querySelector('label').textContent.replace(' *','');
+    if(n in SAMPLE&&x.closest('.row'))v=SAMPLE[n];
+    setVal(x,v);
+  });
+  // variasi prestasi
+  const rows=[...document.querySelectorAll('#prestasiRows .row')];
+  const ex=[['A. Akademik & Talenta Siswa','Siswa','Siti Aminah','OSN','Matematika','Kabupaten','Juara 1 / Emas','Ya – ke Provinsi'],
+    ['B. SMK','Siswa','Rizky Pratama','LKS DIKMEN','Web Technologies','Provinsi','Juara 2 / Perak','Ya – ke Nasional'],
+    ['E. Guru/Kepala Sekolah/GTK','Guru','Dra. Lestari','GEMPITA Awards','Guru Inovatif','Provinsi','Finalis','Tidak']];
+  const k=['kategori','peran','nama_peraih','lomba','bidang','tingkat','peringkat','lanjut'];
+  rows.slice(0,3).forEach((r,i)=>k.forEach((f,j)=>{const x=r.querySelector(`[name=${f}]`);if(x)setVal(x,ex[i][j])}));
+  toast('Data contoh terisi. Periksa lalu HAPUS/GANTI sebelum mengirim data asli.',true);
+}
+function clearAll(){
+  if(!confirm('Kosongkan semua isian?'))return;
+  document.getElementById('form').reset();
+  document.querySelectorAll('#pages [name]').forEach(x=>{if(x.name!=='sumber'||!x.readOnly)x.value=''});calcAng();
+  localStorage.removeItem('cabdin2026');toast('Semua isian dikosongkan.',true);
+}
+
+function go(i){
+  if(i<0||i>=SECTIONS.length)return;
+  if(i>cur)done.add(cur);
+  cur=i;
+  [...pages.children].forEach((p,k)=>p.style.display=k===i?'':'none');
+  [...nav.children].forEach((b,k)=>{b.classList.toggle('on',k===i);b.classList.toggle('done',done.has(k)&&k!==i)});
+  scrollTo({top:0,behavior:'smooth'});save();
+}
+function collect(p){
+  const o={};p.querySelectorAll('[name]').forEach(x=>{if(x.closest('.row'))return;o[x.name]=x.value});return o;
+}
+function collectRows(box){
+  return [...box.querySelectorAll('.row')].map(r=>{const o={};r.querySelectorAll('[name]').forEach(x=>o[x.name]=x.value);return o})
+    .filter(o=>Object.values(o).some(v=>v!==''));
+}
+function build(){
+  const sec={},kids=[...pages.children];
+  const idn=collect(kids[0]);
+  kids.slice(1).forEach(p=>{
+    if(p.dataset.id==='06_Prestasi'){
+      const ind=collectRows(p.querySelector('#indRows')),pr=collectRows(p.querySelector('#prestasiRows'));
+      if(ind.length)sec['06_Indikator_Prestasi']=ind;
+      if(pr.length)sec['06_Prestasi']=pr;
+    } else {
+      if(p.dataset.id==='02_Anggaran'){
+        const ang=collectRows(p.querySelector('#angRows')).filter(r=>r.pagu!==''||r.realisasi!=='');
+        if(ang.length)sec['02_Anggaran_Rinci']=ang;
+      }
+      const o=collect(p);
+      if(Object.values(o).some(v=>v!==''))sec[p.dataset.id]=o;
+    }
+  });
+  return {sekolah:idn,sections:sec};
+}
+function toast(t,ok){const m=document.getElementById('msg');m.textContent=t;m.style.background=ok?'#15803d':'#b91c1c';m.style.display='block';setTimeout(()=>m.style.display='none',5000)}
+
+async function submitAll(){
+  const idPage=pages.children[0];
+  for(const x of idPage.querySelectorAll('[required]'))if(!x.value){go(0);x.reportValidity();return}
+  for(const x of document.querySelectorAll('.row [required]'))if(!x.value){
+    const i=+x.closest('section').dataset.i;go(i);x.reportValidity();return}
+  if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi di index.html',false);return}
+  if(/CONTOH/.test(idPage.querySelector('[name=nama]').value)&&!confirm('Nama sekolah berisi "CONTOH" – tampaknya ini data contoh, bukan data asli. Tetap kirim?'))return;
+  if(!confirm('Kirim semua data sekarang? Jika NPSN ini pernah mengirim, data lama akan DITIMPA (revisi).'))return;
+  const btn=document.getElementById('submit');btn.disabled=true;btn.textContent='Mengirim...';
+  try{
+    const st=await sendPayload(build());
+    localStorage.removeItem('cabdin2026');
+    lastSent=build();localStorage.setItem('cabdin2026_last',JSON.stringify(lastSent));toast(st==='ok'?'Data berhasil disimpan. Terima kasih!':'Data terkirim (balasan server tidak terbaca). Pastikan dengan klik "Muat Data Saya".',true);setTimeout(()=>{if(confirm('Data terkirim. Cetak Bukti Pengisian untuk ditandatangani Kepala Sekolah sekarang?'))printRekap(lastSent)},400);
+    document.getElementById('form').reset();
+  }catch(e){toast('Gagal mengirim: '+e,false)}
+  btn.disabled=false;btn.textContent='Kirim Semua Data';
+}
+// kirim dengan konfirmasi dari server + otomatis coba lagi bila server sibuk
+async function sendPayload(p){
+  const body=JSON.stringify(p),H={'Content-Type':'text/plain;charset=utf-8'},btn=document.getElementById('submit');
+  for(let i=0;i<3;i++){
+    try{
+      const r=await (await fetch(SCRIPT_URL,{method:'POST',headers:H,body})).json();
+      if(r.ok)return 'ok';
+      if(r.busy){btn.textContent='Server sibuk, mencoba lagi...';await new Promise(s=>setTimeout(s,3000*(i+1)));continue}
+      throw new Error(r.error||'Gagal menyimpan');
+    }catch(e){
+      if(e instanceof TypeError){await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:H,body});return 'unverified'}
+      throw e;
+    }
+  }
+  throw new Error('Server sedang sibuk, coba beberapa saat lagi');
+}
+// simpan draft otomatis di browser
+function save(){try{localStorage.setItem('cabdin2026',JSON.stringify({d:[...document.querySelectorAll('#pages > section')].map(p=>[...p.querySelectorAll('[name]')].map(x=>x.value))}))}catch(e){}}
+document.addEventListener('input',()=>save());
+go(0);
+</script>
+</body>
+</html>
+

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Rekap Evaluasi Kinerja 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{--p:#1d4ed8;--b:#d5deef}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:#f3f6fc;color:#1e293b}
+header{background:linear-gradient(135deg,#1e3a8a,#1d4ed8);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:1.2rem}
+.wrap{max-width:1200px;margin:auto;padding:16px}
+.card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:1.05rem;color:var(--p)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.kpi div{background:#fff;border:1px solid var(--b);border-radius:12px;padding:14px;text-align:center}
+.kpi b{display:block;font-size:1.6rem;color:var(--p)}.kpi span{font-size:.8rem}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px}
+.charts .card canvas{max-height:300px}
+input,select{padding:7px;border:1px solid #b9c5de;border-radius:8px;font:inherit}
+.btn{background:var(--p);color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;text-decoration:none;font-size:.9rem}
+.btn.sec{background:#e2e8f0;color:#1e293b}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#eef3ff;position:sticky;top:0}
+.tw{max-height:420px;overflow:auto}
+.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}
+#login{max-width:360px;margin:80px auto;text-align:center}
+#login input{width:100%;margin:10px 0}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+@media print{header .btn,.bar,#tabs{display:none}}
+</style>
+</head>
+<body>
+<header><h1>🔐 Dashboard Admin – Evaluasi Kinerja Pendidikan 2026 · Cabdin Wilayah Jember</h1>
+<div id="hbtn" style="display:none"><a class="btn sec" href="index.html">Form Sekolah</a>
+<button class="btn sec" onclick="load()">⟳ Muat Ulang</button>
+<button class="btn sec" onclick="print()">🖨 Cetak</button>
+<button class="btn" style="background:#b91c1c" onclick="logout()">Keluar</button></div></header>
+
+<div id="login" class="card">
+<h2>Login Admin</h2>
+<input type="password" id="pw" placeholder="Password admin" onkeydown="if(event.key==='Enter')doLogin()">
+<button class="btn" style="width:100%" onclick="doLogin()">Masuk</button>
+<p id="lerr" class="no"></p>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+<div class="kpi" id="kpi"></div>
+<div class="charts" id="charts"></div>
+
+<div class="card"><h2>Perbandingan Data 2025 vs 2026</h2>
+<div class="bar"><select id="cj" onchange="cmpRender()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
+<select id="ck2" onchange="cmpRender()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
+<span style="font-size:.8rem">Hanya menghitung sekolah yang mengisi data pembanding 2025 (bagian 10) untuk indikator tersebut.</span></div>
+<div class="charts"><div><canvas id="cc1"></canvas></div><div><canvas id="cc2"></canvas></div></div>
+<div class="tw" style="margin-top:10px"><table id="tcmp"></table></div></div>
+
+<div class="card"><h2>Status Pengisian per Sekolah</h2>
+<div class="bar">
+<input id="q" placeholder="Cari nama/NPSN" oninput="renderStatus()">
+<select id="fk" onchange="renderStatus()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
+<select id="fj" onchange="renderStatus()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
+<select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
+<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option></select>
+<button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
+<span id="cnt"></span></div>
+<div class="tw"><table id="tstatus"></table></div>
+<p style="font-size:.78rem">Tip: buat sheet <b>Master_Sekolah</b> (kolom: NPSN, Nama, Jenjang, Status, Kabupaten) berisi seluruh sekolah agar daftar "Belum mengisi" muncul.</p></div>
+
+<div class="card"><h2>Daftar Prestasi</h2>
+<div class="bar"><select id="pt" onchange="renderPrestasi()"><option value="">Semua Tingkat</option><option>Kabupaten</option><option>Provinsi</option><option>Nasional</option><option>Internasional</option></select>
+<input id="pq" placeholder="Cari nama/lomba/sekolah" oninput="renderPrestasi()"></div>
+<div class="tw"><table id="tpres"></table></div></div>
+</div>
+
+<script>
+// ====== Isi dengan URL Web App Apps Script yang SAMA dengan index.html ======
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbygPZXx-j45O7XgHLgTGp_qbJbhILEypHJAYzvtqmyOwEWVtCeTH8kcfxKNrubicjT4sA/exec";
+
+let D={},rows=[],charts=[];
+const num=v=>Number(v)||0;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SEC=['01_Profil','02_Anggaran','03_Sarpras_SDM','04_Mutu','05_Program','06_Prestasi','07_Kemitraan','08_Evaluasi','09_Proyeksi2027'];
+
+async function doLogin(){
+  const pw=$('pw').value;$('lerr').textContent='';
+  if(SCRIPT_URL.startsWith('GANTI')){$('lerr').textContent='SCRIPT_URL belum diisi di admin.html';return}
+  try{
+    const r=await (await fetch(SCRIPT_URL+'?action=admin&pw='+encodeURIComponent(pw))).json();
+    if(!r.ok){$('lerr').textContent=r.error||'Gagal';return}
+    sessionStorage.setItem('adm',pw);show(r.data);
+  }catch(e){$('lerr').textContent='Gagal terhubung: '+e}
+}
+async function load(){
+  const pw=sessionStorage.getItem('adm');if(!pw)return;
+  const r=await (await fetch(SCRIPT_URL+'?action=admin&pw='+encodeURIComponent(pw))).json();
+  if(r.ok)show(r.data);else logout();
+}
+function logout(){sessionStorage.removeItem('adm');location.reload()}
+if(sessionStorage.getItem('adm'))load();
+
+function show(d){
+  D=d;$('login').style.display='none';$('app').style.display='';$('hbtn').style.display='';
+  build();
+}
+const g=k=>D[k]||[];
+function build(){
+  // gabung status per sekolah
+  const map={};
+  const touch=(r,sec)=>{
+    const k=String(r.NPSN).trim();if(!k)return;
+    const o=map[k]||(map[k]={npsn:k,nama:r.Nama_Sekolah,jenjang:r.Jenjang,status:r.Status,kab:r.Kabupaten,kepsek:r.Kepala_Sekolah,secs:new Set(),waktu:'',prestasi:0});
+    if(sec){o.secs.add(sec==='06_Indikator_Prestasi'?'06_Prestasi':sec)}
+    if(r.Waktu&&r.Waktu>o.waktu){o.waktu=r.Waktu;o.nama=r.Nama_Sekolah||o.nama;o.kepsek=r.Kepala_Sekolah||o.kepsek}
+  };
+  Object.keys(D).forEach(n=>{if(/^0\d_/.test(n)&&n!=='02_Anggaran_Rinci')D[n].forEach(r=>touch(r,n))});
+  g('06_Prestasi').forEach(r=>{const o=map[String(r.NPSN).trim()];if(o)o.prestasi++});
+  const master=g('Master_Sekolah');
+  rows=Object.values(map).map(o=>({...o,sudah:true,jml:o.secs.size}));
+  master.forEach(m=>{const k=String(m.NPSN).trim();if(!k||map[k])return;
+    rows.push({npsn:k,nama:m.Nama,jenjang:m.Jenjang,status:m.Status,kab:m.Kabupaten,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,kepsek:''})});
+  rows.forEach(o=>{if(master.length){const m=master.find(x=>String(x.NPSN).trim()===o.npsn);if(m){o.nama=o.nama||m.Nama;o.jenjang=o.jenjang||m.Jenjang;o.status=o.status||m.Status;o.kab=o.kab||m.Kabupaten}}});
+  rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
+  kpi();charts_();renderStatus();renderPrestasi();cmpInit();
+}
+function kpi(){
+  const sudah=rows.filter(r=>r.sudah).length,tot=rows.length;
+  const prof=g('01_Profil'),ang=g('02_Anggaran_Rinci'),pr=g('06_Prestasi'),ind=g('06_Indikator_Prestasi');
+  const siswa=prof.reduce((a,r)=>a+num(r.siswa_L)+num(r.siswa_P),0);
+  const guru=prof.reduce((a,r)=>a+num(r.guru_pns)+num(r.guru_pppk)+num(r.guru_gty),0);
+  const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
+  const nas=pr.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
+  const K=[[sudah+(g('Master_Sekolah').length?' / '+tot:''),'Sekolah sudah mengisi'],[siswa.toLocaleString('id-ID'),'Total siswa'],[guru.toLocaleString('id-ID'),'Total guru'],
+   [pr.length,'Total prestasi'],[nas,'Prestasi Nasional/Internasional'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran']];
+  $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+}
+function mk(title,type,labels,sets,opts={}){
+  const c=document.createElement('div');c.className='card';c.innerHTML=`<h2>${title}</h2><canvas></canvas>`;$('charts').appendChild(c);
+  charts.push(new Chart(c.querySelector('canvas'),{type,data:{labels,datasets:sets},options:{responsive:true,...opts}}));
+}
+const COL=['#1d4ed8','#16a34a','#f59e0b','#dc2626','#7c3aed','#0891b2','#db2777'];
+const cnt=(arr,f)=>{const m={};arr.forEach(r=>{const k=f(r)||'-';m[k]=(m[k]||0)+1});return m};
+function charts_(){
+  charts.forEach(c=>c.destroy());charts=[];$('charts').innerHTML='';
+  // 1 sekolah per jenjang (sudah vs belum)
+  const J=['SMA','SMK','SLB'];
+  mk('Sekolah Mengisi per Jenjang','bar',J,[
+    {label:'Sudah',data:J.map(j=>rows.filter(r=>r.jenjang===j&&r.sudah).length),backgroundColor:'#16a34a'},
+    {label:'Belum',data:J.map(j=>rows.filter(r=>r.jenjang===j&&!r.sudah).length),backgroundColor:'#fca5a5'}],{scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}});
+  // 2 siswa per jenjang
+  const prof=g('01_Profil');
+  mk('Jumlah Siswa & Guru per Jenjang','bar',J,[
+    {label:'Siswa',data:J.map(j=>prof.filter(r=>r.Jenjang===j).reduce((a,r)=>a+num(r.siswa_L)+num(r.siswa_P),0)),backgroundColor:COL[0]},
+    {label:'Guru',data:J.map(j=>prof.filter(r=>r.Jenjang===j).reduce((a,r)=>a+num(r.guru_pns)+num(r.guru_pppk)+num(r.guru_gty),0)),backgroundColor:COL[2]}]);
+  // 3 anggaran per sumber
+  const ang=g('02_Anggaran_Rinci'),src={};
+  ang.forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
+  const sk=Object.keys(src);
+  mk('Pagu vs Realisasi Anggaran per Sumber (Rp)','bar',sk.map(k=>k+' ('+(src[k].p?(src[k].r/src[k].p*100).toFixed(0):0)+'%)'),[
+    {label:'Pagu',data:sk.map(k=>src[k].p),backgroundColor:'#93c5fd'},{label:'Realisasi',data:sk.map(k=>src[k].r),backgroundColor:COL[1]}]);
+  // 4 prestasi per tingkat
+  const pr=g('06_Prestasi'),T=['Kabupaten','Provinsi','Nasional','Internasional'],ct=cnt(pr,r=>r.tingkat);
+  mk('Prestasi per Tingkat','doughnut',T,[{data:T.map(t=>ct[t]||0),backgroundColor:COL}]);
+  // 5 prestasi per kategori
+  const ck=cnt(pr,r=>r.kategori),kk=Object.keys(ck);
+  mk('Prestasi per Kategori','bar',kk,[{label:'Jumlah',data:kk.map(k=>ck[k]),backgroundColor:COL[4]}],{indexAxis:'y'});
+  // 6 corong indikator
+  const ind=g('06_Indikator_Prestasi'),F=[['ikut','Mengikuti'],['juara_kab','Juara Kab'],['lolos_prov','Lolos Prov'],['lolos_nas','Nasional'],['juara_int','Internasional']];
+  mk('Indikator Utama (Corong Prestasi)','bar',F.map(f=>f[1]),[{label:'Jumlah',data:F.map(f=>ind.reduce((a,r)=>a+num(r[f[0]]),0)),backgroundColor:COL[5]}]);
+  // 7 top sekolah
+  const top=rows.filter(r=>r.prestasi).sort((a,b)=>b.prestasi-a.prestasi).slice(0,10);
+  mk('10 Sekolah dengan Prestasi Terbanyak','bar',top.map(r=>r.nama),[{label:'Prestasi',data:top.map(r=>r.prestasi),backgroundColor:COL[2]}],{indexAxis:'y'});
+  // 8 peringkat
+  const cp=cnt(pr,r=>r.peringkat),pk=Object.keys(cp);
+  mk('Prestasi per Peringkat','pie',pk,[{data:pk.map(k=>cp[k]),backgroundColor:COL.concat(COL)}]);
+}
+let view=[];
+function renderStatus(){
+  const q=$('q').value.toLowerCase(),fk=$('fk').value,fj=$('fj').value,fs=$('fs').value,ff=$('ff').value;
+  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='sudah')===r.sudah));
+  $('cnt').textContent=view.length+' sekolah';
+  $('tstatus').innerHTML=`<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kabupaten</th><th>Kepala Sekolah</th><th>Terisi</th><th>Prestasi</th><th>Terakhir Kirim</th><th>Status</th></tr>`+
+   view.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`).join('');
+}
+function renderPrestasi(){
+  const t=$('pt').value,q=$('pq').value.toLowerCase();
+  const v=g('06_Prestasi').filter(r=>(!t||r.tingkat===t)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  $('tpres').innerHTML=`<tr><th>Sekolah</th><th>Status</th><th>Kategori</th><th>Peraih</th><th>Lomba</th><th>Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Lanjut</th><th>Bukti</th></tr>`+
+   v.map(r=>`<tr><td>${esc(r.Nama_Sekolah)}</td><td>${esc(r.Status)}</td><td>${esc(r.kategori)}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)}</td><td>${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td>${/^https?:/.test(r.bukti)?`<a href="${esc(r.bukti)}" target="_blank">Lihat</a>`:esc(r.bukti)}</td></tr>`).join('');
+}
+// ===== Perbandingan 2025 vs 2026 =====
+const _n=(S,s,k)=>Number((S[s]||{})[k])||0,_sum=(S,s,k)=>(S[s]||[]).reduce((a,r)=>a+(Number(r[k])||0),0);
+const METRICS=[
+ {k:'siswa',l:'Jumlah siswa',f:S=>_n(S,'01_Profil','siswa_L')+_n(S,'01_Profil','siswa_P')},
+ {k:'rombel',l:'Jumlah rombel',f:S=>_n(S,'01_Profil','rombel')},
+ {k:'guru',l:'Jumlah guru',f:S=>_n(S,'01_Profil','guru_pns')+_n(S,'01_Profil','guru_pppk')+_n(S,'01_Profil','guru_gty')},
+ {k:'guru_sert',l:'Guru bersertifikat pendidik',f:S=>_n(S,'01_Profil','guru_sertifikasi')},
+ {k:'tendik',l:'Tenaga kependidikan',f:S=>_n(S,'01_Profil','tendik_pns')+_n(S,'01_Profil','tendik_non')},
+ {k:'kelas_baik',l:'Ruang kelas kondisi baik',f:S=>_n(S,'03_Sarpras_SDM','kelas_baik')},
+ {k:'kelas_rusak',l:'Ruang kelas rusak (ringan+sedang+berat)',good:-1,f:S=>_n(S,'03_Sarpras_SDM','kelas_rr')+_n(S,'03_Sarpras_SDM','kelas_rs')+_n(S,'03_Sarpras_SDM','kelas_rb')},
+ {k:'tka',l:'Rerata nilai TKA',avg:1,f:S=>_n(S,'04_Mutu','rerata_tka')},
+ {k:'lulus',l:'Persentase kelulusan (%)',avg:1,f:S=>_n(S,'04_Mutu','lulus_persen')},
+ {k:'lanjut',l:'Lulusan studi lanjut (PTN+PTS/Vokasi)',f:S=>_n(S,'04_Mutu','lulus_ptn')+_n(S,'04_Mutu','lulus_pts')},
+ {k:'kerja',l:'Lulusan bekerja/berwirausaha',f:S=>_n(S,'04_Mutu','lulus_kerja')+_n(S,'04_Mutu','lulus_wira')},
+ {k:'juara_kab',l:'Juara tingkat Kabupaten',f:S=>_sum(S,'06_Indikator_Prestasi','juara_kab')},
+ {k:'lolos_prov',l:'Lolos/Juara tingkat Provinsi',f:S=>_sum(S,'06_Indikator_Prestasi','lolos_prov')},
+ {k:'lolos_nas',l:'Menembus tingkat Nasional',f:S=>_sum(S,'06_Indikator_Prestasi','lolos_nas')},
+ {k:'juara_int',l:'Prestasi Internasional',f:S=>_sum(S,'06_Indikator_Prestasi','juara_int')},
+ {k:'pagu',l:'Total pagu anggaran (Rp)',rp:1,f:S=>_sum(S,'02_Anggaran_Rinci','pagu')},
+ {k:'real',l:'Total realisasi anggaran (Rp)',rp:1,f:S=>_sum(S,'02_Anggaran_Rinci','realisasi')}];
+const LISTS=['02_Anggaran_Rinci','06_Indikator_Prestasi','06_Prestasi'];
+const fmtN=(v,m)=>(m.rp?'Rp ':'')+(m.rp?Math.round(v):+v).toLocaleString('id-ID',{maximumFractionDigits:2});
+let SCH=[],cch=[];
+function cmpInit(){
+  const by={};
+  Object.keys(D).forEach(n=>{by[n]={};D[n].forEach(r=>{const k=String(r.NPSN).trim();(by[n][k]=by[n][k]||[]).push(r)})});
+  SCH=rows.filter(r=>r.sudah).map(r=>{const S={};
+    Object.keys(by).forEach(n=>{const x=by[n][r.npsn];if(x)S[n]=LISTS.includes(n)?x:x[0]});
+    return {r,o:S['10_Data2025']||{},v26:Object.fromEntries(METRICS.map(m=>[m.k,m.f(S)]))}});
+  cmpRender();
+}
+function cmpRender(){
+  const fj=$('cj').value,fk=$('ck2').value;
+  const L=SCH.filter(x=>(!fj||x.r.jenjang===fj)&&(!fk||x.r.kab===fk));
+  const R=METRICS.map(m=>{
+    const sub=L.filter(x=>x.o[m.k+'25']!==undefined&&x.o[m.k+'25']!=='');
+    const agg=a=>m.avg?(a.length?a.reduce((p,c)=>p+c,0)/a.length:0):a.reduce((p,c)=>p+c,0);
+    return {m,n:sub.length,a:agg(sub.map(x=>num(x.o[m.k+'25']))),b:agg(sub.map(x=>x.v26[m.k]))}
+  });
+  $('tcmp').innerHTML='<tr><th>Indikator</th><th>2025</th><th>2026</th><th>Selisih</th><th>Perubahan</th><th>Sekolah</th></tr>'+
+   R.map(r=>{if(!r.n)return `<tr><td>${esc(r.m.l)}</td><td colspan="5" style="color:#888">belum ada data 2025</td></tr>`;
+    const d=r.b-r.a,good=(r.m.good||1)*d,col=good>0?'#15803d':good<0?'#b91c1c':'#444',ar=d>0?'▲':d<0?'▼':'●';
+    return `<tr><td>${esc(r.m.l)}</td><td>${fmtN(r.a,r.m)}</td><td>${fmtN(r.b,r.m)}</td><td style="color:${col}">${ar} ${fmtN(Math.abs(d),r.m)}</td><td style="color:${col}">${r.a?(d/r.a*100).toFixed(1)+'%':'-'}</td><td>${r.n}</td></tr>`}).join('');
+  cch.forEach(c=>c.destroy());cch=[];
+  const mkc=(id,list,title)=>{const z=list.filter(r=>r.n);
+    cch.push(new Chart($(id),{type:'bar',data:{labels:z.map(r=>r.m.l),datasets:[{label:'2025',data:z.map(r=>r.a),backgroundColor:'#93c5fd'},{label:'2026',data:z.map(r=>r.b),backgroundColor:'#1d4ed8'}]},
+      options:{indexAxis:'y',plugins:{title:{display:true,text:title}}}}))};
+  mkc('cc1',R.filter(r=>!r.m.rp&&!r.m.avg),'Jumlah (orang/unit)');
+  mkc('cc2',R.filter(r=>r.m.rp||r.m.avg),'Anggaran (Rp) dan rata-rata (TKA, kelulusan)');
+}
+function csv(){
+  const h=['NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian'];
+  const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu,r.sudah?'Sudah':'Belum']));
+  const s='\ufeff'+L.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='rekap_pengisian_sekolah.csv';a.click();
+}
+</script>
+</body>
+</html>

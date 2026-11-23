@@ -16,6 +16,10 @@ nav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0;position:sticky;top:0;back
 nav button{border:1px solid var(--b);background:#fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:.85rem}
 nav button.on{background:var(--p);color:#fff;border-color:var(--p)}
 nav button.done::after{content:" ✓"}
+nav button.has-err{border-color:#dc2626;color:#b91c1c;background:#fef2f2}
+nav button.has-err::after{content:" !";color:#dc2626;font-weight:700}
+.err-field{border:2px solid #dc2626 !important;background:#fef2f2 !important;box-shadow:0 0 0 3px rgba(220,38,38,.14)}
+.err-msg{color:#dc2626;font-size:.75rem;margin-top:3px;font-weight:600}
 .card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:18px;margin-bottom:14px}
 .card h2{margin-top:0;color:var(--p);font-size:1.15rem}
 .card h3{margin:18px 0 8px;font-size:1rem;color:#334155}
@@ -307,14 +311,14 @@ addInd();addPrestasi();
 // ===== Anggaran: baris sumber dana + persentase otomatis =====
 const FIXED_ANG=['BOS','BPOPP','DAK','Revitalisasi','Bantuan Pendidikan Lain'];
 function addAng(nama=''){
-  const fixed=!!nama;
+  const fixed=!!nama,reqBB=(nama==='BOS'||nama==='BPOPP');
   const d=el(`<div class="row"><div class="grid">
-   <div class="full"><label>Sumber Dana</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
+   <div class="full"><label>Sumber Dana${reqBB?' (Wajib diisi *)':''}</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
    <div><label>Pagu 2025 (Rp)</label><input type="number" min="0" name="pagu_2025"></div>
    <div><label>Realisasi 2025 (Rp)</label><input type="number" min="0" name="realisasi_2025"></div>
    <div><label>% Realisasi 2025</label><input name="persen_2025" readonly placeholder="otomatis"></div>
-   <div><label>Pagu 2026 (Rp)</label><input type="number" min="0" name="pagu"></div>
-   <div><label>Realisasi 2026 (Rp)</label><input type="number" min="0" name="realisasi"></div>
+   <div><label>Pagu 2026 (Rp)${reqBB?' *':''}</label><input type="number" min="0" name="pagu"></div>
+   <div><label>Realisasi 2026 (Rp)${reqBB?' *':''}</label><input type="number" min="0" name="realisasi"></div>
    <div><label>% Realisasi 2026</label><input name="persen" readonly placeholder="otomatis"></div></div>
    ${fixed?'':'<button type="button" class="btn del" onclick="this.parentNode.remove();calcAng();save()">Hapus</button>'}</div>`);
   document.getElementById('angRows').appendChild(d);
@@ -665,19 +669,99 @@ function toast(t,ok){
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>m.style.display='none',5000);
 }
 
+const REQUIRED_CORE={
+  identitas:['npsn','nama','jenjang','status','kabupaten','kecamatan','kepsek','pengisi','kontak'],
+  '01_Profil':['rombel_2026','siswa_L_2026','siswa_P_2026','guru_pns_2026','guru_pppk_2026','guru_gty_2026','akreditasi','lokasi'],
+  '02_Anggaran':['lpj','temuan'],
+  '03_Sarpras_SDM':['kelas_baik_2026','kelas_rr_2026','kelas_rs_2026','kelas_rb_2026','revit_status'],
+  '04_Mutu':['kurikulum','lulus_persen_2026'],
+  '05_Program':['sakti','gempita','jgg'],
+  '07_Kemitraan':['ortu'],
+  '08_Evaluasi':['eval_kinerja','solusi'],
+  '09_Proyeksi2027':['prioritas']
+};
+function clearFieldErr(x){
+  x.classList.remove('err-field');
+  const p=x.parentElement,m=p&&p.querySelector(':scope > .err-msg');
+  if(m)m.remove();
+  const sec=x.closest('section');
+  if(sec&&!sec.querySelector('.err-field')){
+    const b=nav.children[+sec.dataset.i];
+    if(b)b.classList.remove('has-err');
+  }
+}
+function markFieldErr(x,msg='Isian ini harus diisi'){
+  x.classList.add('err-field');
+  const p=x.parentElement;
+  if(p&&!p.querySelector(':scope > .err-msg')){
+    const d=document.createElement('div');d.className='err-msg';d.textContent='* '+msg;
+    p.appendChild(d);
+  }
+  const sec=x.closest('section');
+  if(sec){const b=nav.children[+sec.dataset.i];if(b)b.classList.add('has-err')}
+}
+function clearAllErrs(){
+  document.querySelectorAll('.err-field').forEach(x=>x.classList.remove('err-field'));
+  document.querySelectorAll('.err-msg').forEach(m=>m.remove());
+  [...nav.children].forEach(b=>b.classList.remove('has-err'));
+}
+document.addEventListener('input',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('err-field')&&e.target.value.trim()!=='')clearFieldErr(e.target)});
+document.addEventListener('change',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('err-field')&&e.target.value.trim()!=='')clearFieldErr(e.target)});
+
+function validateAllFields(){
+  clearAllErrs();
+  const errs=[];
+  const req=(sec,name,msg='Isian ini harus diisi')=>{
+    const x=sec&&sec.querySelector(`[name="${name}"]`);
+    if(x&&!x.readOnly&&x.value.trim()===''){markFieldErr(x,msg);errs.push(x)}
+  };
+  const pg={};[...pages.children].forEach(p=>pg[p.dataset.id]=p);
+  // 1. Cek indikator inti di setiap bagian
+  Object.entries(REQUIRED_CORE).forEach(([id,fields])=>{
+    const sec=pg[id];if(!sec)return;
+    fields.forEach(f=>req(sec,f));
+  });
+  // 2. Cek kondisional (wajib hanya jika relevan)
+  const valOf=(id,name)=>((pg[id]&&pg[id].querySelector(`[name="${name}"]`))||{}).value||'';
+  if(/^Ada/i.test(valOf('02_Anggaran','temuan')))req(pg['02_Anggaran'],'temuan_uraian','Wajib diisi karena ada temuan audit');
+  if(valOf('03_Sarpras_SDM','revit_status')==='Ya'){
+    req(pg['03_Sarpras_SDM'],'revit_item','Wajib diisi bagi penerima revitalisasi');
+    req(pg['03_Sarpras_SDM'],'revit_progres_2026','Wajib diisi bagi penerima revitalisasi');
+  }
+  if(valOf('05_Program','sakti')==='Ada')req(pg['05_Program'],'sakti_ket','Wajib diisi jika SAKTI Ada');
+  if(valOf('05_Program','tefa')==='Ada')req(pg['05_Program'],'tefa_ket','Wajib diisi jika TEFA Ada');
+  // 3. Cek Anggaran: BOS dan BPOPP wajib diisi (Pagu & Realisasi 2026)
+  document.querySelectorAll('#angRows .row').forEach(r=>{
+    const sm=(r.querySelector('[name=sumber]').value||'').trim();
+    if(sm==='BOS'||sm==='BPOPP'){
+      const p=r.querySelector('[name=pagu]'),rl=r.querySelector('[name=realisasi]');
+      if(p.value.trim()===''){markFieldErr(p,`Pagu ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(p)}
+      if(rl.value.trim()===''){markFieldErr(rl,`Realisasi ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(rl)}
+    }
+  });
+  // 4. Cek baris dinamis Prestasi/Indikator hanya jika baris tersebut mulai diisi
+  document.querySelectorAll('#prestasiRows .row, #indRows .row').forEach(row=>{
+    const inputs=[...row.querySelectorAll('[name]')];
+    if(!inputs.some(x=>!x.readOnly&&x.value.trim()!==''))return;
+    row.querySelectorAll('[required]').forEach(x=>{
+      if(x.value.trim()===''){markFieldErr(x,'Isian ini harus diisi');errs.push(x)}
+    });
+  });
+  return errs;
+}
+
 async function submitAll(){
   const idPage=pages.children[0];
   const curNpsn=idPage.querySelector('[name=npsn]').value.trim();
   if(sampleMode){toast('Mode data contoh tidak dapat dikirim. Klik "Kosongkan Semua" lalu verifikasi NPSN asli.',false);go(0);return}
   if(!verifiedNpsn||verifiedNpsn!==curNpsn){toast('NPSN belum diverifikasi terhadap Master_Sekolah. Klik "Verifikasi NPSN & Muat Data" di halaman Identitas.',false);go(0);return}
-  for(const x of idPage.querySelectorAll('[required]'))if(!x.value){go(0);x.reportValidity();return}
-  // Validasi baris dinamis hanya jika baris tersebut mulai diisi (baris kosong dilewati)
-  for(const row of document.querySelectorAll('.row')){
-    const inputs=[...row.querySelectorAll('[name]')];
-    if(!inputs.some(x=>!x.readOnly&&x.value.trim()!==''))continue;
-    for(const x of row.querySelectorAll('[required]'))if(!x.value){
-      const i=+x.closest('section').dataset.i;go(i);x.reportValidity();return;
-    }
+  const errs=validateAllFields();
+  if(errs.length){
+    const first=errs[0],sec=first.closest('section'),idx=sec?+sec.dataset.i:0;
+    go(idx,true);
+    setTimeout(()=>{first.focus();first.scrollIntoView({behavior:'smooth',block:'center'})},120);
+    toast(`Isian belum lengkap! Masih ada ${errs.length} kolom kosong (ditandai merah). Isian ini harus diisi (isi 0 atau "-" bila tidak ada).`,false);
+    return;
   }
   // Cek anggaran 2025 & 2026: realisasi tidak boleh melebihi pagu
   for(const r of document.querySelectorAll('#angRows .row')){
@@ -685,8 +769,9 @@ async function submitAll(){
     for(const [yr,pk,rk] of [['2025','pagu_2025','realisasi_2025'],['2026','pagu','realisasi']]){
       const p=+r.querySelector(`[name=${pk}]`).value||0,rl=+r.querySelector(`[name=${rk}]`).value||0;
       if(rl>p){
-        const i=+r.closest('section').dataset.i;go(i);
-        r.querySelector(`[name=${rk}]`).focus();
+        const elR=r.querySelector(`[name=${rk}]`),i=+r.closest('section').dataset.i;
+        markFieldErr(elR,'Realisasi melebihi Pagu');go(i,true);
+        setTimeout(()=>{elR.focus();elR.scrollIntoView({behavior:'smooth',block:'center'})},120);
         toast(`Realisasi ${yr} "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
         return;
       }

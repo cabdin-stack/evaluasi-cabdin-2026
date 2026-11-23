@@ -85,7 +85,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
 <select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
 <button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
-<button class="btn" style="background:#0f766e" onclick="downloadStatusXls()">⬇ Unduh Excel</button>
+<button class="btn" style="background:#0f766e" onclick="downloadStatusXls()">⬇ Unduh XLS</button>
 <span id="cnt"></span></div>
 <div class="tw"><table id="tstatus"></table></div>
 <p style="font-size:.78rem">Tip: buat sheet <b>Master_Sekolah</b> (kolom: NPSN, Nama, Jenjang, Status, Kabupaten) berisi seluruh sekolah agar daftar "Belum mengisi" muncul.</p></div>
@@ -166,6 +166,8 @@ function build(){
     for(const t of keys){const f=ks.find(k=>k.trim().toLowerCase()===t);if(f!==undefined&&String(obj[f]??'').trim()!=='')return String(obj[f]).trim()}
     return '';
   };
+  const normKab=v=>{const s=String(v||'').trim();if(/jember/i.test(s))return 'Jember';if(/lumajang/i.test(s))return 'Lumajang';return s};
+  const normStat=v=>{const s=String(v||'').trim();if(/negeri/i.test(s))return 'Negeri';if(/swasta/i.test(s))return 'Swasta';return s};
   const masterMap={};
   master.forEach(m=>{
     const k=pick(m,['npsn']);if(!k||masterMap[k])return;
@@ -173,8 +175,8 @@ function build(){
       npsn:k,
       nama:pick(m,['nama','nama_sekolah','nama sekolah','sekolah']),
       jenjang:pick(m,['jenjang','bentuk pendidikan','bentuk_pendidikan']).toUpperCase(),
-      status:pick(m,['status']),
-      kab:pick(m,['kabupaten','kab','kab/kota','kabupaten/kota'])
+      status:normStat(pick(m,['status'])),
+      kab:normKab(pick(m,['kabupaten','kab','kab/kota','kabupaten/kota']))
     };
   });
   const hasMaster=Object.keys(masterMap).length>0;
@@ -184,8 +186,8 @@ function build(){
       ...o,
       nama:o.nama||(m?m.nama:''),
       jenjang:String(o.jenjang||(m?m.jenjang:'')).trim().toUpperCase(),
-      status:o.status||(m?m.status:''),
-      kab:o.kab||(m?m.kab:''),
+      status:normStat(o.status||(m?m.status:'')),
+      kab:normKab(o.kab||(m?m.kab:'')),
       inMaster:!hasMaster||!!m,
       sudah:true,
       jml:o.secs.size
@@ -198,6 +200,7 @@ function build(){
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderAngAnom();renderStatus();renderPrestasi();renderIndikator();cmpInit();
 }
+const validAng=arr=>arr.filter(r=>num(r.pagu)>0&&num(r.realisasi)<=num(r.pagu));
 function renderAngAnom(){
   const bad=g('02_Anggaran_Rinci').filter(r=>num(r.realisasi)>num(r.pagu));
   const card=$('angAnomCard');
@@ -212,14 +215,15 @@ function kpi(){
   const masterRows=hasMaster?rows.filter(r=>r.inMaster):rows;
   const luarCount=hasMaster?rows.filter(r=>!r.inMaster).length:0;
   const sudah=masterRows.filter(r=>r.sudah).length,tot=masterRows.length;
-  const prof=g('01_Profil'),ang=g('02_Anggaran_Rinci'),pr=g('06_Prestasi');
+  const prof=g('01_Profil'),angAll=g('02_Anggaran_Rinci'),ang=validAng(angAll),pr=g('06_Prestasi');
+  const badAng=angAll.filter(r=>num(r.realisasi)>num(r.pagu)).length;
   const pr26=pr.filter(r=>String(r.tahun||'2026')==='2026'),pr25=pr.length-pr26.length;
   const siswa=prof.reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0);
   const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0);
   const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
   const nas26=pr26.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
   const K=[[sudah+(hasMaster?' / '+tot:''),'Sekolah sudah mengisi'+(luarCount?` (+${luarCount} di luar Master)`:'')],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
-   [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026']];
+   [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026'+(badAng?` (${badAng} anomali dikecualikan)`:'')]];
   $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
 }
 function mk(title,type,labels,sets,opts={}){
@@ -241,8 +245,8 @@ function charts_(){
   mk('Jumlah Siswa & Guru per Jenjang (2026)','bar',J,[
     {label:'Siswa',data:J.map(j=>byJ(j).reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0)),backgroundColor:COL[0]},
     {label:'Guru',data:J.map(j=>byJ(j).reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0)),backgroundColor:COL[2]}]);
-  // 3 anggaran per sumber
-  const ang=g('02_Anggaran_Rinci'),src={};
+  // 3 anggaran per sumber (hanya baris valid: pagu > 0 dan realisasi <= pagu)
+  const ang=validAng(g('02_Anggaran_Rinci')),src={};
   ang.forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
   const sk=Object.keys(src);
   mk('Pagu vs Realisasi Anggaran per Sumber (Rp)','bar',sk.map(k=>k+' ('+(src[k].p?(src[k].r/src[k].p*100).toFixed(0):0)+'%)'),[
@@ -436,9 +440,9 @@ function printRekapCabdin(){
     return `<tr><td>${j}</td><td align="center">${neg}</td><td align="center">${sws}</td><td align="center">${jmb}</td><td align="center">${lmj}</td><td align="center"><b>${sub.length}</b></td></tr>`;
   }).join('');
 
-  // Anggaran per sumber
+  // Anggaran per sumber (hanya baris valid: pagu > 0 dan realisasi <= pagu)
   const src={};
-  angR.forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
+  validAng(angR).forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
   let totP=0,totR=0;
   const tblAng=Object.entries(src).map(([k,o])=>{totP+=o.p;totR+=o.r;return `<tr><td>${esc(k)}</td><td align="right">${rpf(o.p)}</td><td align="right">${rpf(o.r)}</td><td align="center">${o.p?(o.r/o.p*100).toFixed(2)+'%':'-'}</td></tr>`}).join('');
 

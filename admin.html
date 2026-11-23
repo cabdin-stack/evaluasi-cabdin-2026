@@ -56,7 +56,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div id="login" class="card">
 <h2>Login Admin</h2>
 <input type="password" id="pw" placeholder="Password admin" onkeydown="if(event.key==='Enter')doLogin()">
-<button class="btn" style="width:100%" onclick="doLogin()">Masuk</button>
+<button class="btn" id="lbtn" style="width:100%" onclick="doLogin()">Masuk</button>
 <p id="lerr" class="no"></p>
 </div>
 
@@ -67,8 +67,8 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div class="card"><h2>Perbandingan Data 2025 vs 2026</h2>
 <div class="bar"><select id="cj" onchange="cmpRender()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
 <select id="ck2" onchange="cmpRender()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
-<span style="font-size:.8rem">Hanya menghitung sekolah yang mengisi data pembanding 2025 (bagian 10) untuk indikator tersebut.</span></div>
-<div class="charts"><div><canvas id="cc1"></canvas></div><div><canvas id="cc2"></canvas></div></div>
+<span style="font-size:.8rem">Hanya menghitung sekolah yang mengisi data 2025 untuk indikator tersebut.</span></div>
+<div class="charts"><div><canvas id="cc1"></canvas></div><div><canvas id="cc2"></canvas></div><div><canvas id="cc3"></canvas></div></div>
 <div class="tw" style="margin-top:10px"><table id="tcmp"></table></div></div>
 
 <div class="card"><h2>Status Pengisian per Sekolah</h2>
@@ -112,19 +112,26 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const SEC=['01_Profil','02_Anggaran','03_Sarpras_SDM','04_Mutu','05_Program','06_Prestasi','07_Kemitraan','08_Evaluasi','09_Proyeksi2027'];
 
+async function fetchAdmin(pw){
+  return (await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',pw})})).json();
+}
 async function doLogin(){
-  const pw=$('pw').value;$('lerr').textContent='';
+  const pw=$('pw').value,btn=$('lbtn');$('lerr').textContent='';
   if(SCRIPT_URL.startsWith('GANTI')){$('lerr').textContent='SCRIPT_URL belum diisi di admin.html';return}
+  btn.disabled=true;btn.textContent='Memeriksa...';
   try{
-    const r=await (await fetch(SCRIPT_URL+'?action=admin&pw='+encodeURIComponent(pw))).json();
+    const r=await fetchAdmin(pw);
     if(!r.ok){$('lerr').textContent=r.error||'Gagal';return}
     sessionStorage.setItem('adm',pw);show(r.data);
   }catch(e){$('lerr').textContent='Gagal terhubung: '+e}
+  finally{btn.disabled=false;btn.textContent='Masuk'}
 }
 async function load(){
   const pw=sessionStorage.getItem('adm');if(!pw)return;
-  const r=await (await fetch(SCRIPT_URL+'?action=admin&pw='+encodeURIComponent(pw))).json();
-  if(r.ok)show(r.data);else logout();
+  try{
+    const r=await fetchAdmin(pw);
+    if(r.ok)show(r.data);else logout();
+  }catch(e){$('lerr').textContent='Gagal memuat data: '+e}
 }
 function logout(){sessionStorage.removeItem('adm');location.reload()}
 if(sessionStorage.getItem('adm'))load();
@@ -140,28 +147,30 @@ function build(){
   const touch=(r,sec)=>{
     const k=String(r.NPSN).trim();if(!k)return;
     const o=map[k]||(map[k]={npsn:k,nama:r.Nama_Sekolah,jenjang:r.Jenjang,status:r.Status,kab:r.Kabupaten,kepsek:r.Kepala_Sekolah,secs:new Set(),waktu:'',prestasi:0});
-    if(sec){o.secs.add(sec==='06_Indikator_Prestasi'?'06_Prestasi':sec)}
+    if(sec){o.secs.add(sec==='06_Indikator_Prestasi'?'06_Prestasi':(sec==='02_Anggaran_Rinci'?'02_Anggaran':sec))}
     if(r.Waktu&&r.Waktu>o.waktu){o.waktu=r.Waktu;o.nama=r.Nama_Sekolah||o.nama;o.kepsek=r.Kepala_Sekolah||o.kepsek}
   };
-  Object.keys(D).forEach(n=>{if(/^(0\d|10)_/.test(n)&&n!=='02_Anggaran_Rinci')D[n].forEach(r=>touch(r,n==='10_Data2025'?'':n))});
+  Object.keys(D).forEach(n=>{if(/^(0\d|10)_/.test(n))D[n].forEach(r=>touch(r,n==='10_Data2025'?'':n))});
   g('06_Prestasi').forEach(r=>{const o=map[String(r.NPSN).trim()];if(o)o.prestasi++});
   const master=g('Master_Sekolah');
+  const mNama=m=>m.Nama||m.Nama_Sekolah||m['Nama Sekolah']||'';
   rows=Object.values(map).map(o=>({...o,sudah:true,jml:o.secs.size}));
-  master.forEach(m=>{const k=String(m.NPSN).trim();if(!k||map[k])return;
-    rows.push({npsn:k,nama:m.Nama,jenjang:m.Jenjang,status:m.Status,kab:m.Kabupaten,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,kepsek:''})});
-  rows.forEach(o=>{if(master.length){const m=master.find(x=>String(x.NPSN).trim()===o.npsn);if(m){o.nama=o.nama||m.Nama;o.jenjang=o.jenjang||m.Jenjang;o.status=o.status||m.Status;o.kab=o.kab||m.Kabupaten}}});
+  master.forEach(m=>{const k=String(m.NPSN||'').trim();if(!k||map[k])return;
+    rows.push({npsn:k,nama:mNama(m),jenjang:m.Jenjang,status:m.Status,kab:m.Kabupaten,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,kepsek:''})});
+  rows.forEach(o=>{if(master.length){const m=master.find(x=>String(x.NPSN||'').trim()===o.npsn);if(m){o.nama=o.nama||mNama(m);o.jenjang=o.jenjang||m.Jenjang;o.status=o.status||m.Status;o.kab=o.kab||m.Kabupaten}}});
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderStatus();renderPrestasi();renderIndikator();cmpInit();
 }
 function kpi(){
   const sudah=rows.filter(r=>r.sudah).length,tot=rows.length;
-  const prof=g('01_Profil'),ang=g('02_Anggaran_Rinci'),pr=g('06_Prestasi'),ind=g('06_Indikator_Prestasi');
+  const prof=g('01_Profil'),ang=g('02_Anggaran_Rinci'),pr=g('06_Prestasi');
+  const pr26=pr.filter(r=>String(r.tahun||'2026')==='2026'),pr25=pr.length-pr26.length;
   const siswa=prof.reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0);
   const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0);
   const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
-  const nas=pr.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
-  const K=[[sudah+(g('Master_Sekolah').length?' / '+tot:''),'Sekolah sudah mengisi'],[siswa.toLocaleString('id-ID'),'Total siswa'],[guru.toLocaleString('id-ID'),'Total guru'],
-   [pr.length,'Total prestasi'],[nas,'Prestasi Nasional/Internasional'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran']];
+  const nas26=pr26.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
+  const K=[[sudah+(g('Master_Sekolah').length?' / '+tot:''),'Sekolah sudah mengisi'],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
+   [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026']];
   $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
 }
 function mk(title,type,labels,sets,opts={}){
@@ -220,7 +229,7 @@ function renderPrestasi(){
   const y=$('py').value,t=$('pt').value,q=$('pq').value.toLowerCase();
   const v=g('06_Prestasi').filter(r=>(!y||String(r.tahun||'2026')===y)&&(!t||r.tingkat===t)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
   $('tpres').innerHTML=`<tr><th>Tahun</th><th>Sekolah</th><th>Status</th><th>Kategori</th><th>Peraih</th><th>Lomba</th><th>Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Lanjut</th><th>Bukti</th></tr>`+
-   v.map(r=>`<tr><td>${esc(r.tahun||'2026')}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(r.Status)}</td><td>${esc(r.kategori)}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)}</td><td>${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td>${/^https?:/.test(r.bukti)?`<a href="${esc(r.bukti)}" target="_blank">Lihat</a>`:esc(r.bukti)}</td></tr>`).join('');
+   v.map(r=>`<tr><td>${esc(r.tahun||'2026')}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(r.Status)}</td><td>${esc(r.kategori)}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)}</td><td>${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td>${/^https?:/.test(r.bukti)?`<a href="${esc(r.bukti)}" target="_blank" rel="noopener noreferrer">Lihat</a>`:esc(r.bukti)}</td></tr>`).join('');
 }
 function renderIndikator(){
   const y=$('iy').value,q=$('iq').value.toLowerCase();
@@ -295,7 +304,8 @@ function cmpRender(){
     cch.push(new Chart($(id),{type:'bar',data:{labels:z.map(r=>r.m.l),datasets:[{label:'2025',data:z.map(r=>r.a),backgroundColor:'#93c5fd'},{label:'2026',data:z.map(r=>r.b),backgroundColor:'#1d4ed8'}]},
       options:{indexAxis:'y',plugins:{title:{display:true,text:title}}}}))};
   mkc('cc1',R.filter(r=>!r.m.rp&&!r.m.avg),'Jumlah (orang/unit)');
-  mkc('cc2',R.filter(r=>r.m.rp||r.m.avg),'Anggaran (Rp) dan rata-rata (TKA, kelulusan)');
+  mkc('cc2',R.filter(r=>r.m.rp),'Anggaran (Rp)');
+  mkc('cc3',R.filter(r=>r.m.avg),'Rata-rata (TKA & Kelulusan %)');
 }
 function csv(){
   const h=['NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian'];
@@ -312,8 +322,8 @@ function printRekapCabdin(){
   const avgY=(arr,k,yr='2026')=>{const vs=arr.map(r=>has(r,k+'_'+yr)?num(r[k+'_'+yr]):(yr==='2026'&&has(r,k)?num(r[k]):null)).filter(x=>x!==null);return vs.length?(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(2):'-'};
   const cntV=(arr,k)=>{const m={};arr.forEach(r=>{const v=String(r[k]||'').trim();if(v)m[v]=(m[v]||0)+1});return Object.entries(m)};
   const rpf=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
-  const notes=(arr,k,lbl)=>arr.filter(r=>String(r[k]||'').trim()).map(r=>`<li><b>${esc(r.Nama_Sekolah)} (${esc(r.Jenjang)}):</b> ${esc(r[k])}</li>`).join('')||'<li><i>Belum ada catatan.</i></li>';
-  const noteBlock=(arr,k,lbl)=>`<p class="sub"><b>${lbl}:</b></p><ul>${notes(arr,k,lbl)}</ul>`;
+  const notes=(arr,k)=>arr.filter(r=>String(r[k]||'').trim()).map(r=>`<div class="note-item"><span class="tag">${esc(r.Jenjang||'-')}</span> <b>${esc(r.Nama_Sekolah)}</b><div class="note-txt">${esc(r[k])}</div></div>`).join('')||'<div class="mut">Belum ada catatan dari sekolah.</div>';
+  const noteBlock=(arr,k,lbl)=>`<div class="note-box"><div class="note-title">${lbl}</div><div class="note-grid">${notes(arr,k)}</div></div>`;
 
   const J=['SMA','SMK','SLB'], sudahRows=rows.filter(r=>r.sudah);
   const tblJ=J.map(j=>{
@@ -342,110 +352,158 @@ function printRekapCabdin(){
   ind.forEach(r=>{const th=String(r.tahun||'2026'),lb=r.lomba_rekap||'-',k=th+'|'+lb;const o=indGrp[k]||(indGrp[k]={th,lb,s:new Set(),ik:0,jk:0,lp:0,ln:0,ji:0});o.s.add(r.NPSN);o.ik+=num(r.ikut);o.jk+=num(r.juara_kab);o.lp+=num(r.lolos_prov);o.ln+=num(r.lolos_nas);o.ji+=num(r.juara_int)});
   const indRows=Object.values(indGrp).sort((a,b)=>b.th.localeCompare(a.th)||a.lb.localeCompare(b.lb));
 
-  const cmpRow=(lbl,a,b)=>`<tr><td>${lbl}</td><td align="right">${a.toLocaleString('id-ID')}</td><td align="right">${b.toLocaleString('id-ID')}</td><td align="right">${(b-a)>=0?'+':''}${(b-a).toLocaleString('id-ID')}</td></tr>`;
+  const cmpRow=(lbl,a,b,good=1)=>{const d=b-a,g=d*good,cls=g>0?'up':g<0?'dn':'eq';return `<tr><td>${lbl}</td><td align="right" class="num">${a.toLocaleString('id-ID')}</td><td align="right" class="num"><b>${b.toLocaleString('id-ID')}</b></td><td align="right" class="num"><span class="delta ${cls}">${d>0?'▲ +':d<0?'▼ ':''}${d.toLocaleString('id-ID')}</span></td></tr>`};
+  const secHdr=(no,t)=>`<div class="sec-hdr"><span class="sec-no">${no}</span><span>${t}</span></div>`;
+  const pillList=(arr,k)=>cntV(arr,k).map(([a,b])=>`<span class="pill">${esc(a)}: <b>${b}</b></span>`).join('')||'<span class="mut">-</span>';
   const tgl=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  const totSiswa26=sumY(prof,['siswa_L','siswa_P'],'2026'), totGuru26=sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2026');
 
   const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Rekap Agenda Akhir Tahun 2026 - Cabdin Jember</title>
-<style>body{font-family:'Times New Roman',serif;font-size:10.5pt;margin:20px 30px;color:#000;line-height:1.4}
-h1,h2,h3{text-align:center;margin:2px 0}h1{font-size:14pt}h2{font-size:12.5pt}h3{font-size:11pt;font-weight:normal}
-hr{border:1.5px solid #000;margin:8px 0 12px}
-h4{background:#e2e8f0;padding:4px 8px;margin:16px 0 6px;font-size:11pt;border-left:4px solid #1e3a8a;page-break-after:avoid}
-.sub{margin:8px 0 3px;page-break-after:avoid}.mut{margin:2px 0 6px;color:#555}
-table{border-collapse:collapse;width:100%;margin:4px 0 10px;font-size:9.5pt}
-th,td{border:1px solid #334155;padding:3px 6px;vertical-align:top}th{background:#eef3ff}
-tr{break-inside:avoid;page-break-inside:avoid}ul{margin:2px 0 8px;padding-left:18px;font-size:9.5pt}
-.box{display:flex;gap:10px;margin:8px 0}.box>div{flex:1;border:1px solid #334155;padding:8px;text-align:center;background:#f8fafc}
-@media print{.np{display:none}}</style></head><body>
-<p class="np" style="text-align:right"><button onclick="print()" style="padding:8px 16px;font-size:10pt;cursor:pointer">🖨 Cetak / Simpan PDF</button></p>
-<h1>PRESENTASI AGENDA AKHIR TAHUN 2026</h1>
-<h2>EVALUASI KINERJA PENDIDIKAN SMA, SMK, DAN SLB</h2>
-<h3>CABANG DINAS PENDIDIKAN WILAYAH JEMBER · Kabupaten Jember – Kabupaten Lumajang</h3>
-<h3><i>Tema: “Refleksi Capaian 2026, Penguatan Kinerja, dan Transformasi Pendidikan Menuju 2027.”</i></h3>
-<h3>Cakupan: Seluruh SMA, SMK, dan SLB Negeri maupun Swasta · Tanggal Cetak: ${tgl}</h3><hr>
+<style>
+@page{size:A4;margin:13mm 13mm 15mm 13mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:9.5pt;margin:0;padding:20px 28px;color:#1e293b;background:#f1f5f9;line-height:1.45}
+.page{max-width:960px;margin:auto;background:#fff;padding:26px 30px;border-radius:14px;box-shadow:0 4px 24px rgba(15,23,42,.08)}
+.np{position:sticky;top:10px;z-index:9;display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px}
+.np button{background:#1d4ed8;color:#fff;border:0;padding:9px 18px;border-radius:8px;font:600 9.5pt inherit;cursor:pointer;box-shadow:0 2px 8px rgba(29,78,216,.3)}
+.hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#1d4ed8 100%);color:#fff;padding:22px 24px;border-radius:14px;margin-bottom:16px}
+.hero .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:3px 10px;border-radius:99px;font-size:7.8pt;letter-spacing:.6px;font-weight:700;margin-bottom:8px}
+.hero h1{margin:0;font-size:15pt;letter-spacing:.3px}
+.hero h2{margin:3px 0 0;font-size:11.5pt;font-weight:500;color:#dbeafe}
+.hero .meta{margin-top:8px;font-size:8.8pt;color:#bfdbfe}
+.hero .tema{margin-top:12px;background:rgba(255,255,255,.1);border-left:3px solid #60a5fa;padding:8px 12px;border-radius:0 8px 8px 0;font-style:italic;font-size:9.2pt;color:#eff6ff}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.kpis>div{background:#f8fafc;border:1px solid #e2e8f0;border-top:3px solid #1d4ed8;border-radius:10px;padding:10px 12px;text-align:center}
+.kpis b{display:block;font-size:13.5pt;color:#0f172a;font-variant-numeric:tabular-nums}
+.kpis span{font-size:7.6pt;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.sec-hdr{display:flex;align-items:center;gap:10px;margin:20px 0 8px;padding-bottom:5px;border-bottom:2px solid #e2e8f0;font-size:11pt;font-weight:700;color:#0f172a;page-break-after:avoid;break-after:avoid}
+.sec-no{background:#1e3a8a;color:#fff;padding:2px 9px;border-radius:6px;font-size:9pt;font-weight:700}
+.sub{margin:8px 0 4px;font-size:9.2pt;color:#334155;page-break-after:avoid;break-after:avoid}
+.mut{font-size:8.5pt;color:#64748b;font-style:italic;margin:3px 0 6px}
+table{border-collapse:collapse;width:100%;margin:5px 0 10px;font-size:8.8pt}
+th,td{border:1px solid #e2e8f0;padding:5px 8px;vertical-align:top}
+th{background:#f1f5f9;color:#0f172a;font-weight:700;text-align:left}
+tbody tr:nth-child(even){background:#fafcff}
+tr.tot th,tr.tot td{background:#eef2ff;color:#1e3a8a;font-weight:700;border-top:2px solid #93c5fd}
+tr,.note-item,.card3>div,.kpis>div{break-inside:avoid;page-break-inside:avoid}
+.num{font-variant-numeric:tabular-nums}
+.delta{display:inline-block;padding:1px 6px;border-radius:99px;font-size:8pt;font-weight:700}
+.delta.up{background:#dcfce7;color:#15803d}.delta.dn{background:#fee2e2;color:#b91c1c}.delta.eq{background:#f1f5f9;color:#475569}
+.pill-row{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.pill{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:99px;padding:2px 9px;font-size:8.2pt;color:#334155}
+.note-box{margin:8px 0 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px}
+.note-title{font-size:8.8pt;font-weight:700;color:#1e3a8a;margin-bottom:6px;page-break-after:avoid}
+.note-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.note-item{background:#fff;border:1px solid #e2e8f0;border-left:3px solid #3b82f6;border-radius:6px;padding:6px 8px;font-size:8.3pt}
+.note-txt{margin-top:2px;color:#334155}
+.tag{display:inline-block;background:#dbeafe;color:#1e40af;font-weight:700;font-size:7.2pt;padding:1px 5px;border-radius:4px;margin-right:3px}
+.card3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0}
+.card3>div{background:#f8fafc;border:1px solid #cbd5e1;border-top:3px solid #1d4ed8;border-radius:10px;padding:10px;text-align:center;font-size:8.8pt}
+.card3 b{display:block;color:#1e3a8a;margin-bottom:3px;font-size:9.5pt}
+.motto{margin-top:14px;background:linear-gradient(90deg,#1e3a8a,#1d4ed8);color:#fff;text-align:center;padding:10px;border-radius:10px;font-weight:700;letter-spacing:1px;font-size:10.5pt}
+@media print{body{background:#fff;padding:0}.page{box-shadow:none;padding:0;max-width:none;border-radius:0}.np{display:none}}
+</style></head><body><div class="page">
+<div class="np"><button onclick="print()">🖨 Cetak / Simpan PDF</button></div>
+<div class="hero">
+  <div class="badge">LAPORAN EKSEKUTIF • AGENDA AKHIR TAHUN 2026</div>
+  <h1>EVALUASI KINERJA PENDIDIKAN SMA, SMK, DAN SLB</h1>
+  <h2>Cabang Dinas Pendidikan Wilayah Jember (Kabupaten Jember – Kabupaten Lumajang)</h2>
+  <div class="meta">Cakupan: Seluruh SMA, SMK, dan SLB Negeri maupun Swasta &nbsp;|&nbsp; Tanggal Cetak: ${tgl}</div>
+  <div class="tema">Tema: “Refleksi Capaian 2026, Penguatan Kinerja, dan Transformasi Pendidikan Menuju 2027.”</div>
+</div>
 
-<h4>01. PROFIL DAN POTRET PENDIDIKAN</h4>
-<table><tr><th>Jenjang</th><th>Negeri</th><th>Swasta</th><th>Kab. Jember</th><th>Kab. Lumajang</th><th>Total Sekolah Mengisi</th></tr>${tblJ}
-<tr><th>TOTAL</th><th>${sudahRows.filter(r=>r.status==='Negeri').length}</th><th>${sudahRows.filter(r=>r.status==='Swasta').length}</th><th>${sudahRows.filter(r=>r.kab==='Jember').length}</th><th>${sudahRows.filter(r=>r.kab==='Lumajang').length}</th><th>${sudahRows.length}</th></tr></table>
-<table><tr><th>Indikator Profil</th><th>2025</th><th>2026</th><th>Selisih</th></tr>
+<div class="kpis">
+  <div><b>${sudahRows.length}</b><span>Sekolah Mengisi</span></div>
+  <div><b>${totSiswa26.toLocaleString('id-ID')}</b><span>Total Siswa 2026</span></div>
+  <div><b>${totGuru26.toLocaleString('id-ID')}</b><span>Total Guru 2026</span></div>
+  <div><b>${totP?(totR/totP*100).toFixed(1)+'%':'-'}</b><span>Realisasi Anggaran</span></div>
+  <div><b>${pr.length}</b><span>Prestasi Tercatat</span></div>
+</div>
+
+${secHdr('01','PROFIL DAN POTRET PENDIDIKAN')}
+<table><thead><tr><th>Jenjang</th><th style="text-align:center">Negeri</th><th style="text-align:center">Swasta</th><th style="text-align:center">Kab. Jember</th><th style="text-align:center">Kab. Lumajang</th><th style="text-align:center">Total Sekolah</th></tr></thead><tbody>${tblJ}
+<tr class="tot"><th>TOTAL</th><th style="text-align:center">${sudahRows.filter(r=>r.status==='Negeri').length}</th><th style="text-align:center">${sudahRows.filter(r=>r.status==='Swasta').length}</th><th style="text-align:center">${sudahRows.filter(r=>r.kab==='Jember').length}</th><th style="text-align:center">${sudahRows.filter(r=>r.kab==='Lumajang').length}</th><th style="text-align:center">${sudahRows.length}</th></tr></tbody></table>
+<table><thead><tr><th>Indikator Profil</th><th style="text-align:right">2025</th><th style="text-align:right">2026</th><th style="text-align:right">Perubahan</th></tr></thead><tbody>
 ${cmpRow('Jumlah Rombel',sumY(prof,['rombel'],'2025'),sumY(prof,['rombel'],'2026'))}
-${cmpRow('Jumlah Siswa (L+P)',sumY(prof,['siswa_L','siswa_P'],'2025'),sumY(prof,['siswa_L','siswa_P'],'2026'))}
+${cmpRow('Jumlah Siswa (L+P)',sumY(prof,['siswa_L','siswa_P'],'2025'),totSiswa26)}
 ${cmpRow('Siswa Berkebutuhan Khusus / Inklusi',sumY(prof,['siswa_abk'],'2025'),sumY(prof,['siswa_abk'],'2026'))}
 ${cmpRow('Siswa Kurang Mampu (KIP/PIP)',sumY(prof,['siswa_kurangmampu'],'2025'),sumY(prof,['siswa_kurangmampu'],'2026'))}
-${cmpRow('Guru (PNS + PPPK + Yayasan/GTT)',sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2025'),sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2026'))}
+${cmpRow('Guru (PNS + PPPK + Yayasan/GTT)',sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2025'),totGuru26)}
 ${cmpRow('Guru Bersertifikat Pendidik',sumY(prof,['guru_sertifikasi'],'2025'),sumY(prof,['guru_sertifikasi'],'2026'))}
-${cmpRow('Tenaga Kependidikan (ASN + Non-ASN)',sumY(prof,['tendik_pns','tendik_non'],'2025'),sumY(prof,['tendik_pns','tendik_non'],'2026'))}</table>
-<p class="sub"><b>Sebaran Lokasi:</b> ${cntV(prof,'lokasi').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'} | <b>Akreditasi:</b> ${cntV(prof,'akreditasi').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'}</p>
+${cmpRow('Tenaga Kependidikan (ASN + Non-ASN)',sumY(prof,['tendik_pns','tendik_non'],'2025'),sumY(prof,['tendik_pns','tendik_non'],'2026'))}</tbody></table>
+<p class="sub"><b>Sebaran Lokasi</b></p><div class="pill-row">${pillList(prof,'lokasi')}</div>
+<p class="sub"><b>Sebaran Akreditasi</b></p><div class="pill-row">${pillList(prof,'akreditasi')}</div>
 ${noteBlock(prof,'kebutuhan','Peta Kebutuhan & Pemerataan Layanan')}
 
-<h4>02. ANGGARAN DAN TATA KELOLA</h4>
-<table><tr><th>Sumber Dana</th><th>Pagu (Rp)</th><th>Realisasi (Rp)</th><th>% Realisasi</th></tr>${tblAng||'<tr><td colspan="4" align="center">Belum ada data anggaran</td></tr>'}
-<tr><th>TOTAL</th><th align="right">${rpf(totP)}</th><th align="right">${rpf(totR)}</th><th>${totP?(totR/totP*100).toFixed(2)+'%':'-'}</th></tr></table>
-<p class="sub"><b>Status LPJ BOS/BPOPP:</b> ${cntV(ang2,'lpj').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'}</p>
-<p class="sub"><b>Temuan Pemeriksaan / Audit 2026:</b> ${cntV(ang2,'temuan').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'}</p>
+${secHdr('02','ANGGARAN DAN TATA KELOLA')}
+<table><thead><tr><th>Sumber Dana</th><th style="text-align:right">Pagu (Rp)</th><th style="text-align:right">Realisasi (Rp)</th><th style="text-align:center">% Realisasi</th></tr></thead><tbody>${tblAng||'<tr><td colspan="4" align="center">Belum ada data anggaran</td></tr>'}
+<tr class="tot"><th>TOTAL</th><th style="text-align:right" class="num">${rpf(totP)}</th><th style="text-align:right" class="num">${rpf(totR)}</th><th style="text-align:center">${totP?(totR/totP*100).toFixed(2)+'%':'-'}</th></tr></tbody></table>
+<p class="sub"><b>Status LPJ BOS/BPOPP</b></p><div class="pill-row">${pillList(ang2,'lpj')}</div>
+<p class="sub"><b>Temuan Pemeriksaan / Audit 2026</b></p><div class="pill-row">${pillList(ang2,'temuan')}</div>
 ${noteBlock(ang2,'temuan_uraian','Uraian Temuan & Tindak Lanjut')}${noteBlock(ang2,'anggaran_masalah','Kendala Pengelolaan Anggaran')}
 
-<h4>03. SARANA PRASARANA DAN SDM</h4>
-<table><tr><th>Indikator Sarpras &amp; SDM</th><th>2025</th><th>2026</th><th>Selisih</th></tr>
+${secHdr('03','SARANA PRASARANA DAN SDM')}
+<table><thead><tr><th>Indikator Sarpras &amp; SDM</th><th style="text-align:right">2025</th><th style="text-align:right">2026</th><th style="text-align:right">Perubahan</th></tr></thead><tbody>
 ${cmpRow('Ruang Kelas Kondisi Baik',sumY(srp,['kelas_baik'],'2025'),sumY(srp,['kelas_baik'],'2026'))}
-${cmpRow('Ruang Kelas Rusak (Ringan + Sedang + Berat)',sumY(srp,['kelas_rr','kelas_rs','kelas_rb'],'2025'),sumY(srp,['kelas_rr','kelas_rs','kelas_rb'],'2026'))}
+${cmpRow('Ruang Kelas Rusak (Ringan + Sedang + Berat)',sumY(srp,['kelas_rr','kelas_rs','kelas_rb'],'2025'),sumY(srp,['kelas_rr','kelas_rs','kelas_rb'],'2026'),-1)}
 ${cmpRow('Laboratorium Layak Pakai',sumY(srp,['lab_layak'],'2025'),sumY(srp,['lab_layak'],'2026'))}
 ${cmpRow('Bengkel / Ruang Praktik SMK Layak Pakai',sumY(srp,['bengkel_layak'],'2025'),sumY(srp,['bengkel_layak'],'2026'))}
 ${cmpRow('Fasilitas SLB',sumY(srp,['slb_fasilitas'],'2025'),sumY(srp,['slb_fasilitas'],'2026'))}
-${cmpRow('Kekurangan Guru (orang)',sumY(srp,['guru_kurang'],'2025'),sumY(srp,['guru_kurang'],'2026'))}
+${cmpRow('Kekurangan Guru (orang)',sumY(srp,['guru_kurang'],'2025'),sumY(srp,['guru_kurang'],'2026'),-1)}
 ${cmpRow('Guru Linier dengan Mapel',sumY(srp,['guru_linier'],'2025'),sumY(srp,['guru_linier'],'2026'))}
-${cmpRow('Guru Mengikuti Pelatihan',sumY(srp,['guru_pelatihan'],'2025'),sumY(srp,['guru_pelatihan'],'2026'))}</table>
-<p class="sub"><b>Penerima Revitalisasi 2026:</b> ${cntV(srp,'revit_status').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'} | <b>Rata-rata Progres Fisik:</b> ${avgY(srp,'revit_progres','2026')}%</p>
+${cmpRow('Guru Mengikuti Pelatihan',sumY(srp,['guru_pelatihan'],'2025'),sumY(srp,['guru_pelatihan'],'2026'))}</tbody></table>
+<p class="sub"><b>Penerima Revitalisasi 2026</b> &nbsp;(Rata-rata progres fisik: <b>${avgY(srp,'revit_progres','2026')}%</b>)</p><div class="pill-row">${pillList(srp,'revit_status')}</div>
 ${noteBlock(srp,'sarpras_butuh','Kebutuhan Prioritas Sarpras')}${noteBlock(srp,'pengembangan','Pengembangan Profesionalitas Kepsek & Guru')}
 
-<h4>04. MUTU PEMBELAJARAN DAN HASIL PENDIDIKAN</h4>
-<p class="sub"><b>Kurikulum Diterapkan:</b> ${cntV(mut,'kurikulum').map(([k,v])=>`${esc(k)}: ${v}`).join(' · ')||'-'}</p>
-<table><tr><th>Indikator Mutu &amp; Lulusan</th><th>2025</th><th>2026</th></tr>
-<tr><td>Guru Menerapkan Deep Learning</td><td align="right">${sumY(mut,['guru_dl'],'2025')}</td><td align="right">${sumY(mut,['guru_dl'],'2026')}</td></tr>
-<tr><td>Guru Memanfaatkan AI</td><td align="right">${sumY(mut,['guru_ai'],'2025')}</td><td align="right">${sumY(mut,['guru_ai'],'2026')}</td></tr>
-<tr><td>Total Peserta TKA</td><td align="right">${sumY(mut,['peserta_tka'],'2025')}</td><td align="right">${sumY(mut,['peserta_tka'],'2026')}</td></tr>
-<tr><td>Rata-rata Nilai TKA</td><td align="right">${avgY(mut,'rerata_tka','2025')}</td><td align="right">${avgY(mut,'rerata_tka','2026')}</td></tr>
-<tr><td>Rata-rata Kelulusan (%)</td><td align="right">${avgY(mut,'lulus_persen','2025')}</td><td align="right">${avgY(mut,'lulus_persen','2026')}</td></tr>
-<tr><td>Lulusan Studi Lanjut (PTN + PTS/Vokasi)</td><td align="right">${sumY(mut,['lulus_ptn','lulus_pts'],'2025')}</td><td align="right">${sumY(mut,['lulus_ptn','lulus_pts'],'2026')}</td></tr>
-<tr><td>Lulusan Bekerja &amp; Berwirausaha</td><td align="right">${sumY(mut,['lulus_kerja','lulus_wira'],'2025')}</td><td align="right">${sumY(mut,['lulus_kerja','lulus_wira'],'2026')}</td></tr></table>
+${secHdr('04','MUTU PEMBELAJARAN DAN HASIL PENDIDIKAN')}
+<p class="sub"><b>Kurikulum Diterapkan</b></p><div class="pill-row">${pillList(mut,'kurikulum')}</div>
+<table><thead><tr><th>Indikator Mutu &amp; Lulusan</th><th style="text-align:right">2025</th><th style="text-align:right">2026</th></tr></thead><tbody>
+<tr><td>Guru Menerapkan Deep Learning</td><td align="right" class="num">${sumY(mut,['guru_dl'],'2025')}</td><td align="right" class="num"><b>${sumY(mut,['guru_dl'],'2026')}</b></td></tr>
+<tr><td>Guru Memanfaatkan AI</td><td align="right" class="num">${sumY(mut,['guru_ai'],'2025')}</td><td align="right" class="num"><b>${sumY(mut,['guru_ai'],'2026')}</b></td></tr>
+<tr><td>Total Peserta TKA</td><td align="right" class="num">${sumY(mut,['peserta_tka'],'2025')}</td><td align="right" class="num"><b>${sumY(mut,['peserta_tka'],'2026')}</b></td></tr>
+<tr><td>Rata-rata Nilai TKA</td><td align="right" class="num">${avgY(mut,'rerata_tka','2025')}</td><td align="right" class="num"><b>${avgY(mut,'rerata_tka','2026')}</b></td></tr>
+<tr><td>Rata-rata Kelulusan (%)</td><td align="right" class="num">${avgY(mut,'lulus_persen','2025')}</td><td align="right" class="num"><b>${avgY(mut,'lulus_persen','2026')}</b></td></tr>
+<tr><td>Lulusan Studi Lanjut (PTN + PTS/Vokasi)</td><td align="right" class="num">${sumY(mut,['lulus_ptn','lulus_pts'],'2025')}</td><td align="right" class="num"><b>${sumY(mut,['lulus_ptn','lulus_pts'],'2026')}</b></td></tr>
+<tr><td>Lulusan Bekerja &amp; Berwirausaha</td><td align="right" class="num">${sumY(mut,['lulus_kerja','lulus_wira'],'2025')}</td><td align="right" class="num"><b>${sumY(mut,['lulus_kerja','lulus_wira'],'2026')}</b></td></tr></tbody></table>
 ${noteBlock(mut,'inovasi_digital','Praktik Digitalisasi & Pemanfaatan AI')}${noteBlock(mut,'karakter','Penguatan Karakter & Budaya Sekolah')}${noteBlock(mut,'kemandirian','Kemandirian Lulusan (Khusus SLB)')}
 
-<h4>05. PROGRAM UNGGULAN DAN INOVASI</h4>
-<table><tr><th>Program</th><th>Sebaran Status Sekolah</th></tr>
-${[['sakti','SAKTI (Satu Sekolah Satu Prestasi)'],['gempita','GEMPITA 2026'],['smkbisa','SMK BISA'],['smkpk','SMK Pusat Keunggulan'],['tefa','Teaching Factory (TEFA)'],['fiksi','FIKSI'],['jgg','JELAS GO GLOBAL']].map(([k,l])=>`<tr><td>${l}</td><td>${cntV(prg,k).map(([a,b])=>`${esc(a)}: ${b}`).join(' · ')||'-'}</td></tr>`).join('')}</table>
+${secHdr('05','PROGRAM UNGGULAN DAN INOVASI')}
+<table><thead><tr><th>Program Unggulan</th><th>Sebaran Status Sekolah</th></tr></thead><tbody>
+${[['sakti','SAKTI (Satu Sekolah Satu Prestasi)'],['gempita','GEMPITA 2026'],['smkbisa','SMK BISA'],['smkpk','SMK Pusat Keunggulan'],['tefa','Teaching Factory (TEFA)'],['fiksi','FIKSI'],['jgg','JELAS GO GLOBAL']].map(([k,l])=>`<tr><td><b>${l}</b></td><td><div class="pill-row" style="margin:0">${pillList(prg,k)}</div></td></tr>`).join('')}</tbody></table>
 ${noteBlock(prg,'inovasi','Inovasi Pembelajaran & Praktik Baik')}${noteBlock(prg,'inklusif','Penguatan Layanan Pendidikan Khusus & Inklusif')}
 
-<h4>06. PRESTASI SISWA DAN GTK TAHUN 2026</h4>
+${secHdr('06','PRESTASI SISWA DAN GTK TAHUN 2025 & 2026')}
 ${katHTML}
 <p class="sub"><b>F. Pemetaan Capaian Prestasi Berjenjang</b></p>
-<table><tr><th>Tingkat</th><th>Jumlah Prestasi</th><th>Juara / Medali</th><th>Finalis</th><th>Lolos ke Tingkat Berikutnya</th></tr>
-${TING.map(t=>{const L=pr.filter(r=>r.tingkat===t);return `<tr><td>${t}</td><td align="center">${L.length}</td><td align="center">${L.filter(win).length}</td><td align="center">${L.filter(r=>/Finalis/.test(r.peringkat||'')).length}</td><td align="center">${L.filter(r=>r.lanjut&&r.lanjut!=='Tidak').length}</td></tr>`}).join('')}</table>
+<table><thead><tr><th>Tingkat</th><th style="text-align:center">Jumlah Prestasi</th><th style="text-align:center">Juara / Medali</th><th style="text-align:center">Finalis</th><th style="text-align:center">Lolos ke Tingkat Berikutnya</th></tr></thead><tbody>
+${TING.map(t=>{const L=pr.filter(r=>r.tingkat===t);return `<tr><td><b>${t}</b></td><td align="center" class="num">${L.length}</td><td align="center" class="num">${L.filter(win).length}</td><td align="center" class="num">${L.filter(r=>/Finalis/.test(r.peringkat||'')).length}</td><td align="center" class="num">${L.filter(r=>r.lanjut&&r.lanjut!=='Tidak').length}</td></tr>`}).join('')}</tbody></table>
 <p class="sub"><b>Indikator Utama Prestasi (Rekap per Lomba)</b></p>
-<table><tr><th>Tahun</th><th>Lomba</th><th>Sekolah</th><th>Mengikuti</th><th>Juara Kab</th><th>Lolos Prov</th><th>Nasional</th><th>Internasional</th></tr>
-${indRows.length?indRows.map(o=>`<tr><td align="center">${esc(o.th)}</td><td>${esc(o.lb)}</td><td align="center">${o.s.size}</td><td align="center">${o.ik}</td><td align="center">${o.jk}</td><td align="center">${o.lp}</td><td align="center">${o.ln}</td><td align="center">${o.ji}</td></tr>`).join(''):'<tr><td colspan="8" align="center">Belum ada data indikator</td></tr>'}</table>
+<table><thead><tr><th style="text-align:center">Tahun</th><th>Lomba</th><th style="text-align:center">Sekolah</th><th style="text-align:center">Mengikuti</th><th style="text-align:center">Juara Kab</th><th style="text-align:center">Lolos Prov</th><th style="text-align:center">Nasional</th><th style="text-align:center">Internasional</th></tr></thead><tbody>
+${indRows.length?indRows.map(o=>`<tr><td align="center">${esc(o.th)}</td><td><b>${esc(o.lb)}</b></td><td align="center" class="num">${o.s.size}</td><td align="center" class="num">${o.ik}</td><td align="center" class="num">${o.jk}</td><td align="center" class="num">${o.lp}</td><td align="center" class="num">${o.ln}</td><td align="center" class="num">${o.ji}</td></tr>`).join(''):'<tr><td colspan="8" align="center">Belum ada data indikator</td></tr>'}</tbody></table>
 
-<h4>07. KEMITRAAN DAN KOLABORASI</h4>
-<p class="sub"><b>Total Mitra DUDI:</b> 2025: ${sumY(kem,['dudi_n'],'2025')} · 2026: ${sumY(kem,['dudi_n'],'2026')} | <b>Total Mitra Perguruan Tinggi:</b> 2025: ${sumY(kem,['pt_n'],'2025')} · 2026: ${sumY(kem,['pt_n'],'2026')}</p>
+${secHdr('07','KEMITRAAN DAN KOLABORASI')}
+<div class="pill-row"><span class="pill">Mitra DUDI 2025: <b>${sumY(kem,['dudi_n'],'2025')}</b> → 2026: <b>${sumY(kem,['dudi_n'],'2026')}</b></span><span class="pill">Mitra Perguruan Tinggi 2025: <b>${sumY(kem,['pt_n'],'2025')}</b> → 2026: <b>${sumY(kem,['pt_n'],'2026')}</b></span></div>
 ${noteBlock(kem,'dudi','Kerja Sama DUDI')}${noteBlock(kem,'pt','Kemitraan Perguruan Tinggi')}${noteBlock(kem,'pemkab','Kolaborasi Pemkab & Masyarakat')}${noteBlock(kem,'global','Kerja Sama Nasional & Internasional')}
 
-<h4>08. EVALUASI DAN PERMASALAHAN</h4>
+${secHdr('08','EVALUASI DAN PERMASALAHAN')}
 ${noteBlock(evl,'eval_kinerja','Evaluasi Kinerja Sekolah 2026')}${noteBlock(evl,'gap','Kesenjangan Mutu & Layanan')}${noteBlock(evl,'m_anggaran','Permasalahan Anggaran')}${noteBlock(evl,'m_sdm','Permasalahan SDM')}${noteBlock(evl,'m_sarpras','Permasalahan Sarpras')}${noteBlock(evl,'m_belajar','Permasalahan Pembelajaran')}${noteBlock(evl,'solusi','Solusi & Tindak Lanjut')}${noteBlock(evl,'dukungan','Dukungan yang Diharapkan dari Cabdin')}
 
-<h4>09. PROYEKSI DAN TARGET KINERJA 2027</h4>
-<table><tr><th>Target Akumulasi 2027</th><th>Nilai Target</th></tr>
-<tr><td>Target Juara Tingkat Kabupaten</td><td align="right">${sumY(pry,['t_prestasi_juara'],'2026')}</td></tr>
-<tr><td>Target Peserta Lolos Provinsi</td><td align="right">${sumY(pry,['t_prestasi_prov'],'2026')}</td></tr>
-<tr><td>Target Peserta Tingkat Nasional</td><td align="right">${sumY(pry,['t_prestasi_nas'],'2026')}</td></tr>
-<tr><td>Target Prestasi Internasional</td><td align="right">${sumY(pry,['t_prestasi_int'],'2026')}</td></tr>
-<tr><td>Rata-rata Target TKA 2027</td><td align="right">${avgY(pry,'t_tka','2026')}</td></tr>
-<tr><td>Rata-rata Target Keterserapan Lulusan (%)</td><td align="right">${avgY(pry,'t_lulus','2026')}</td></tr></table>
+${secHdr('09','PROYEKSI DAN TARGET KINERJA 2027')}
+<table><thead><tr><th>Target Akumulasi 2027</th><th style="text-align:right">Nilai Target</th></tr></thead><tbody>
+<tr><td>Target Juara Tingkat Kabupaten</td><td align="right" class="num"><b>${sumY(pry,['t_prestasi_juara'],'2026')}</b></td></tr>
+<tr><td>Target Peserta Lolos Provinsi</td><td align="right" class="num"><b>${sumY(pry,['t_prestasi_prov'],'2026')}</b></td></tr>
+<tr><td>Target Peserta Tingkat Nasional</td><td align="right" class="num"><b>${sumY(pry,['t_prestasi_nas'],'2026')}</b></td></tr>
+<tr><td>Target Prestasi Internasional</td><td align="right" class="num"><b>${sumY(pry,['t_prestasi_int'],'2026')}</b></td></tr>
+<tr><td>Rata-rata Target TKA 2027</td><td align="right" class="num"><b>${avgY(pry,'t_tka','2026')}</b></td></tr>
+<tr><td>Rata-rata Target Keterserapan Lulusan (%)</td><td align="right" class="num"><b>${avgY(pry,'t_lulus','2026')}</b></td></tr></tbody></table>
 ${noteBlock(pry,'prioritas','Prioritas Peningkatan Mutu')}${noteBlock(pry,'t_prestasi','Strategi Peningkatan Prestasi')}${noteBlock(pry,'t_kompetensi','Penguatan Kompetensi Lulusan')}${noteBlock(pry,'t_sarpras','Usulan Pemerataan Sarpras')}${noteBlock(pry,'t_tatakelola','Penguatan Tata Kelola & Akuntabilitas')}
 
-<h4>KERANGKA EVALUASI KINERJA</h4>
-<div class="box"><div><b>INPUT</b><br>Anggaran, SDM, sarpras, dan kebijakan.</div><div><b>PROSES</b><br>Pelaksanaan program dan pembelajaran.</div><div><b>OUTPUT</b><br>Prestasi, kompetensi, dan dampak lulusan.</div></div>
-<h4>PESAN PENUTUP</h4>
-<div class="box"><div><b>2026: EVALUASI</b><br>Apa yang sudah kita capai?</div><div><b>2026: REFLEKSI</b><br>Apa yang harus kita perbaiki?</div><div><b>2027: AKSELERASI</b><br>Apa yang harus kita hasilkan?</div></div>
-<p align="center" style="font-size:12pt;margin-top:14px"><b>SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</b></p>
-</body></html>`;
+${secHdr('★','KERANGKA EVALUASI KINERJA')}
+<div class="card3"><div><b>INPUT</b>Anggaran, SDM, sarpras, dan kebijakan.</div><div><b>PROSES</b>Pelaksanaan program dan pembelajaran.</div><div><b>OUTPUT</b>Prestasi, kompetensi, dan dampak lulusan.</div></div>
+${secHdr('★','PESAN PENUTUP')}
+<div class="card3"><div><b>2026: EVALUASI</b>Apa yang sudah kita capai?</div><div><b>2026: REFLEKSI</b>Apa yang harus kita perbaiki?</div><div><b>2027: AKSELERASI</b>Apa yang harus kita hasilkan?</div></div>
+<div class="motto">SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</div>
+</div></body></html>`;
   const w=window.open('','_blank');
   if(!w){alert('Pop-up diblokir browser. Izinkan pop-up untuk situs ini.');return}
   w.document.write(html);w.document.close();

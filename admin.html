@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin - Rekap Evaluasi Kinerja 2026</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--p:#1d4ed8;--b:#d5deef}
 *{box-sizing:border-box}
@@ -50,6 +51,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div id="hbtn" style="display:none"><a class="btn sec" href="index.html">Form Sekolah</a>
 <button class="btn sec" onclick="load()">⟳ Muat Ulang</button>
 <button class="btn sec" onclick="print()">🖨 Cetak Dashboard</button>
+<button class="btn" style="background:#0f766e" onclick="downloadAllXls()">📊 Unduh Excel</button>
 <button class="btn" style="background:#15803d" onclick="printRekapCabdin()">📄 Cetak Rekap Agenda 2026</button>
 <button class="btn" style="background:#b91c1c" onclick="logout()">Keluar</button></div></header>
 
@@ -71,6 +73,10 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div class="charts"><div><canvas id="cc1"></canvas></div><div><canvas id="cc2"></canvas></div><div><canvas id="cc3"></canvas></div></div>
 <div class="tw" style="margin-top:10px"><table id="tcmp"></table></div></div>
 
+<div class="card" id="angAnomCard" style="display:none;border-color:#fca5a5"><h2 style="color:#b91c1c">⚠ Anomali Anggaran (Realisasi Melebihi Pagu &gt; 100%)</h2>
+<p style="font-size:.82rem;margin:0 0 8px;color:#7f1d1d">Daftar sekolah berikut memiliki realisasi lebih besar dari pagu (kemungkinan salah ketik angka nol, pagu kosong, atau terbalik). Perbaiki di sheet <b>02_Anggaran_Rinci</b> atau minta sekolah merevisi.</p>
+<div class="tw"><table id="tangAnom"></table></div></div>
+
 <div class="card"><h2>Status Pengisian per Sekolah</h2>
 <div class="bar">
 <input id="q" placeholder="Cari nama/NPSN" oninput="renderStatus()">
@@ -79,6 +85,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
 <select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
 <button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
+<button class="btn" style="background:#0f766e" onclick="downloadStatusXls()">⬇ Unduh Excel</button>
 <span id="cnt"></span></div>
 <div class="tw"><table id="tstatus"></table></div>
 <p style="font-size:.78rem">Tip: buat sheet <b>Master_Sekolah</b> (kolom: NPSN, Nama, Jenjang, Status, Kabupaten) berisi seluruh sekolah agar daftar "Belum mengisi" muncul.</p></div>
@@ -86,7 +93,8 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div class="card"><h2>Daftar Prestasi</h2>
 <div class="bar"><select id="py" onchange="renderPrestasi()"><option value="">Semua Tahun</option><option>2026</option><option>2025</option></select>
 <select id="pt" onchange="renderPrestasi()"><option value="">Semua Tingkat</option><option>Kabupaten</option><option>Provinsi</option><option>Nasional</option><option>Internasional</option></select>
-<input id="pq" placeholder="Cari nama/lomba/sekolah" oninput="renderPrestasi()"></div>
+<input id="pq" placeholder="Cari nama/lomba/sekolah" oninput="renderPrestasi()">
+<button class="btn" style="background:#0f766e" onclick="downloadPrestasiXls()">⬇ Unduh Excel</button></div>
 <div class="tw"><table id="tpres"></table></div></div>
 
 <div class="card"><h2>Rekap Indikator Utama Prestasi</h2>
@@ -188,7 +196,16 @@ function build(){
     rows.push({npsn:m.npsn,nama:m.nama,jenjang:m.jenjang,status:m.status,kab:m.kab,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,inMaster:true,kepsek:''});
   });
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
-  kpi();charts_();renderStatus();renderPrestasi();renderIndikator();cmpInit();
+  kpi();charts_();renderAngAnom();renderStatus();renderPrestasi();renderIndikator();cmpInit();
+}
+function renderAngAnom(){
+  const bad=g('02_Anggaran_Rinci').filter(r=>num(r.realisasi)>num(r.pagu));
+  const card=$('angAnomCard');
+  if(!bad.length){card.style.display='none';return}
+  card.style.display='';
+  const rpf=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
+  $('tangAnom').innerHTML='<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Sumber Dana</th><th>Pagu</th><th>Realisasi</th><th>% Realisasi</th></tr>'+
+    bad.map((r,i)=>{const p=num(r.pagu),rl=num(r.realisasi);return `<tr><td>${i+1}</td><td>${esc(r.NPSN)}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(r.sumber)}</td><td style="text-align:right">${rpf(p)}</td><td style="text-align:right;color:#b91c1c;font-weight:700">${rpf(rl)}</td><td style="text-align:center;color:#b91c1c;font-weight:700">${p?(rl/p*100).toFixed(1)+'%':'Pagu 0'}</td></tr>`}).join('');
 }
 function kpi(){
   const hasMaster=g('Master_Sekolah').length>0;
@@ -344,6 +361,60 @@ function csv(){
   const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu,r.sudah?'Sudah':'Belum']));
   const s='\ufeff'+L.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='rekap_pengisian_sekolah.csv';a.click();
+}
+function saveSheetsXls(sheets,filename){
+  const tgl=new Date().toISOString().slice(0,10);
+  if(window.XLSX){
+    const wb=XLSX.utils.book_new();
+    sheets.forEach(([name,aoa])=>{
+      const safe=String(name).replace(/[\\/*?:[\]]/g,'_').slice(0,31)||'Sheet';
+      const ws=XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb,ws,safe);
+    });
+    XLSX.writeFile(wb,`${filename}_${tgl}.xlsx`);
+    return;
+  }
+  // Fallback .xls berbasis tabel HTML jika CDN SheetJS tidak termuat
+  const [name,aoa]=sheets[0];
+  const tbl='<table>'+aoa.map((r,i)=>'<tr>'+r.map(c=>`<${i?'td':'th'}>${esc(c)}</${i?'td':'th'}>`).join('')+'</tr>').join('')+'</table>';
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>${tbl}</body></html>`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'}));a.download=`${filename}_${tgl}.xls`;a.click();
+}
+function objsToAoa(arr){
+  if(!arr||!arr.length)return [['Belum ada data']];
+  const keys=[];arr.forEach(o=>Object.keys(o||{}).forEach(k=>{if(!keys.includes(k))keys.push(k)}));
+  return [keys].concat(arr.map(o=>keys.map(k=>o[k]??'')));
+}
+function downloadStatusXls(){
+  const h=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
+  const aoa=[h].concat(view.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']));
+  saveSheetsXls([['Status_Pengisian',aoa]],'status_pengisian_sekolah');
+}
+function downloadPrestasiXls(){
+  const y=$('py').value,t=$('pt').value,q=$('pq').value.toLowerCase();
+  const v=g('06_Prestasi').filter(r=>(!y||String(r.tahun||'2026')===y)&&(!t||r.tingkat===t)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const h=['No','Tahun','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kategori','Peraih','Peran','Lomba','Bidang','Tingkat','Peringkat','Penyelenggara','Lanjut','Bukti','Dokumentasi'];
+  const aoa=[h].concat(v.map((r,i)=>[i+1,r.tahun||'2026',r.NPSN||'',r.Nama_Sekolah||'',r.Jenjang||'',r.Status||'',r.Kabupaten||'',r.kategori||'',r.nama_peraih||'',r.peran||'',r.lomba||'',r.bidang||'',r.tingkat||'',r.peringkat||'',r.penyelenggara||'',r.lanjut||'',r.bukti||'',r.dokumentasi||'']));
+  saveSheetsXls([['Daftar_Prestasi',aoa]],'daftar_prestasi');
+}
+function downloadAllXls(){
+  const sheets=[];
+  const hSt=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
+  sheets.push(['Status_Pengisian',[hSt].concat(rows.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']))]);
+  const cmpAoa=[['Indikator','2025','2026','Selisih','Perubahan (%)','Jumlah Sekolah']].concat(METRICS.map(m=>{
+    const sub=SCH.filter(x=>x.v25[m.k]!==null&&x.v25[m.k]!==undefined);
+    const agg=a=>m.avg?(a.length?a.reduce((p,c)=>p+c,0)/a.length:0):a.reduce((p,c)=>p+c,0);
+    const a=agg(sub.map(x=>num(x.v25[m.k]))),b=agg(sub.map(x=>num(x.v26[m.k]))),d=b-a;
+    return [m.l,sub.length?a:'-',sub.length?b:'-',sub.length?d:'-',(sub.length&&a)?+(d/a*100).toFixed(2):'-',sub.length];
+  }));
+  sheets.push(['Perbandingan_25_26',cmpAoa]);
+  const badAng=g('02_Anggaran_Rinci').filter(r=>num(r.realisasi)>num(r.pagu));
+  if(badAng.length){
+    sheets.push(['Anomali_Anggaran',[['NPSN','Sekolah','Sumber Dana','Pagu','Realisasi','% Realisasi']].concat(badAng.map(r=>[r.NPSN,r.Nama_Sekolah,r.sumber,num(r.pagu),num(r.realisasi),num(r.pagu)?+(num(r.realisasi)/num(r.pagu)*100).toFixed(2):'Pagu 0']))]);
+  }
+  const order=['01_Profil','02_Anggaran','02_Anggaran_Rinci','03_Sarpras_SDM','04_Mutu','05_Program','06_Prestasi','06_Indikator_Prestasi','07_Kemitraan','08_Evaluasi','09_Proyeksi2027','10_Data2025'];
+  order.forEach(n=>{if(D[n]&&D[n].length)sheets.push([n,objsToAoa(D[n])])});
+  saveSheetsXls(sheets,'rekap_evaluasi_cabdin_2026');
 }
 
 function printRekapCabdin(){

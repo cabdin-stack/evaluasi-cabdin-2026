@@ -322,7 +322,10 @@ function calcAng(){
   let tp=0,tr=0;
   document.querySelectorAll('#angRows .row').forEach(r=>{
     const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
-    r.querySelector('[name=persen]').value=p?(rl/p*100).toFixed(2)+'%':'';
+    const pc=r.querySelector('[name=persen]');
+    const over=(p>0&&rl>p)||(p===0&&rl>0);
+    pc.value=p?(rl/p*100).toFixed(2)+'%'+(over?' ⚠ >100%':''):(rl>0?'⚠ Pagu kosong':'');
+    pc.style.background=over?'#fee2e2':'';pc.style.color=over?'#b91c1c':'';pc.style.fontWeight=over?'700':'';
     tp+=p;tr+=rl;
   });
   const q=n=>document.querySelector(`[name=${n}]`);
@@ -653,6 +656,17 @@ async function submitAll(){
     if(!inputs.some(x=>!x.readOnly&&x.value.trim()!==''))continue;
     for(const x of row.querySelectorAll('[required]'))if(!x.value){
       const i=+x.closest('section').dataset.i;go(i);x.reportValidity();return;
+    }
+  }
+  // Cek anggaran: realisasi tidak boleh melebihi pagu
+  for(const r of document.querySelectorAll('#angRows .row')){
+    const sm=r.querySelector('[name=sumber]').value||'Sumber Dana';
+    const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
+    if(rl>p){
+      const i=+r.closest('section').dataset.i;go(i);
+      r.querySelector('[name=realisasi]').focus();
+      toast(`Realisasi "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
+      return;
     }
   }
   if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi di index.html',false);return}

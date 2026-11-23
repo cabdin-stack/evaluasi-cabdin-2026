@@ -139,6 +139,16 @@ const SEC_LBL={'01_Profil':'01 Profil','02_Anggaran':'02 Anggaran','03_Sarpras_S
 const missingSecs=r=>SEC.filter(s=>!r.secs.has(s)).map(s=>SEC_LBL[s]);
 const missingText=r=>!r.sudah?'Semua (01–09)':(r.jml>=SEC.length?'Lengkap':missingSecs(r).join(', '));
 
+const SESSION_HOURS=8,SESSION_KEY='cabdin2026_adm';
+function saveSession(pw){try{localStorage.setItem(SESSION_KEY,JSON.stringify({pw,exp:Date.now()+SESSION_HOURS*3600*1000}))}catch(e){}}
+function getSession(){
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);if(!raw)return null;
+    const s=JSON.parse(raw);
+    if(!s||!s.pw||Date.now()>s.exp){localStorage.removeItem(SESSION_KEY);return null}
+    return s;
+  }catch(e){return null}
+}
 async function fetchAdmin(pw){
   return (await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',pw})})).json();
 }
@@ -149,19 +159,28 @@ async function doLogin(){
   try{
     const r=await fetchAdmin(pw);
     if(!r.ok){$('lerr').textContent=r.error||'Gagal';return}
-    sessionStorage.setItem('adm',pw);show(r.data);
+    saveSession(pw);show(r.data);
   }catch(e){$('lerr').textContent='Gagal terhubung: '+e}
   finally{btn.disabled=false;btn.textContent='Masuk'}
 }
 async function load(){
-  const pw=sessionStorage.getItem('adm');if(!pw)return;
+  const s=getSession();
+  if(!s){logout();return}
+  const btn=$('lbtn');
+  if($('app').style.display==='none'){btn.disabled=true;btn.textContent='Memuat sesi...';$('lerr').textContent='';}
   try{
-    const r=await fetchAdmin(pw);
-    if(r.ok)show(r.data);else logout();
-  }catch(e){$('lerr').textContent='Gagal memuat data: '+e}
+    const r=await fetchAdmin(s.pw);
+    if(r.ok){saveSession(s.pw);show(r.data);}
+    else logout();
+  }catch(e){
+    $('lerr').textContent='Gagal memuat data (coba muat ulang): '+e;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Masuk';}
+  }
 }
-function logout(){sessionStorage.removeItem('adm');location.reload()}
-if(sessionStorage.getItem('adm'))load();
+function logout(){localStorage.removeItem(SESSION_KEY);sessionStorage.removeItem('adm');location.reload()}
+setInterval(()=>{if($('app').style.display!=='none'&&!getSession()){alert('Sesi admin telah berakhir ('+SESSION_HOURS+' jam). Silakan login kembali.');logout()}},60000);
+if(getSession())load();
 
 function show(d){
   D=d;$('login').style.display='none';$('app').style.display='';$('hbtn').style.display='';

@@ -83,12 +83,21 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <select id="fk" onchange="renderStatus()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
 <select id="fj" onchange="renderStatus()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
 <select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
-<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
+<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="kurang">Belum lengkap (&lt; 9/9)</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
 <button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
 <button class="btn" style="background:#0f766e" onclick="downloadStatusXls()">⬇ Unduh XLS</button>
 <span id="cnt"></span></div>
 <div class="tw"><table id="tstatus"></table></div>
 <p style="font-size:.78rem">Tip: buat sheet <b>Master_Sekolah</b> (kolom: NPSN, Nama, Jenjang, Status, Kabupaten) berisi seluruh sekolah agar daftar "Belum mengisi" muncul.</p></div>
+
+<div class="card"><h2>Daftar Realisasi Anggaran 2025 &amp; 2026 per Sekolah</h2>
+<div class="bar">
+<input id="aq" placeholder="Cari nama/NPSN" oninput="renderAngSekolah()">
+<select id="ak" onchange="renderAngSekolah()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
+<select id="aj" onchange="renderAngSekolah()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
+<button class="btn" style="background:#0f766e" onclick="downloadAngSekolahXls()">⬇ Unduh XLS</button>
+<span id="acnt"></span></div>
+<div class="tw"><table id="tangSch"></table></div></div>
 
 <div class="card"><h2>Daftar Prestasi</h2>
 <div class="bar"><select id="py" onchange="renderPrestasi()"><option value="">Semua Tahun</option><option>2026</option><option>2025</option></select>
@@ -119,6 +128,9 @@ const hasAny=(o,ks,yr)=>ks.some(k=>has(o,k+'_'+yr)||(yr==='2026'&&has(o,k)));
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const SEC=['01_Profil','02_Anggaran','03_Sarpras_SDM','04_Mutu','05_Program','06_Prestasi','07_Kemitraan','08_Evaluasi','09_Proyeksi2027'];
+const SEC_LBL={'01_Profil':'01 Profil','02_Anggaran':'02 Anggaran','03_Sarpras_SDM':'03 Sarpras & SDM','04_Mutu':'04 Mutu','05_Program':'05 Program','06_Prestasi':'06 Prestasi','07_Kemitraan':'07 Kemitraan','08_Evaluasi':'08 Evaluasi','09_Proyeksi2027':'09 Proyeksi 2027'};
+const missingSecs=r=>SEC.filter(s=>!r.secs.has(s)).map(s=>SEC_LBL[s]);
+const missingText=r=>!r.sudah?'Semua (01–09)':(r.jml>=SEC.length?'Lengkap':missingSecs(r).join(', '));
 
 async function fetchAdmin(pw){
   return (await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',pw})})).json();
@@ -198,7 +210,47 @@ function build(){
     rows.push({npsn:m.npsn,nama:m.nama,jenjang:m.jenjang,status:m.status,kab:m.kab,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,inMaster:true,kepsek:''});
   });
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
-  kpi();charts_();renderAngAnom();renderStatus();renderPrestasi();renderIndikator();cmpInit();
+  kpi();charts_();renderAngAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
+}
+function buildAngPerSekolah(){
+  const d25={},a26={};
+  g('10_Data2025').forEach(r=>{
+    const k=String(r.NPSN||'').trim();if(!k)return;
+    const p=has(r,'pagu25')?num(r.pagu25):(has(r,'pagu25_2025')?num(r.pagu25_2025):0);
+    const rl=has(r,'real25')?num(r.real25):(has(r,'real25_2025')?num(r.real25_2025):0);
+    if(p||rl)d25[k]={p,r:rl};
+  });
+  g('02_Anggaran_Rinci').forEach(r=>{
+    const k=String(r.NPSN||'').trim();if(!k)return;
+    const o=a26[k]||(a26[k]={p:0,r:0,over:false});
+    const p=num(r.pagu),rl=num(r.realisasi);
+    o.p+=p;o.r+=rl;if(rl>p)o.over=true;
+  });
+  return rows.filter(r=>d25[r.npsn]||a26[r.npsn]).map(r=>{
+    const x=d25[r.npsn]||{p:0,r:0},y=a26[r.npsn]||{p:0,r:0,over:false};
+    return {npsn:r.npsn,nama:r.nama,jenjang:r.jenjang,status:r.status,kab:r.kab,
+      p25:x.p,r25:x.r,pct25:x.p?(x.r/x.p*100):null,
+      p26:y.p,r26:y.r,pct26:y.p?(y.r/y.p*100):null,over26:y.over||(y.r>y.p)};
+  }).sort((a,b)=>String(a.nama).localeCompare(String(b.nama)));
+}
+let angView=[];
+function renderAngSekolah(){
+  const q=$('aq').value.toLowerCase(),ak=$('ak').value,aj=$('aj').value;
+  angView=buildAngPerSekolah().filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!ak||r.kab===ak)&&(!aj||r.jenjang===aj));
+  $('acnt').textContent=angView.length+' sekolah';
+  const rpf=v=>v?'Rp '+Math.round(v).toLocaleString('id-ID'):'-';
+  const pct=v=>v===null?'-':v.toFixed(1)+'%';
+  let tp25=0,tr25=0,tp26=0,tr26=0;
+  angView.forEach(r=>{tp25+=r.p25;tr25+=r.r25;if(!r.over26){tp26+=r.p26;tr26+=r.r26}});
+  $('tangSch').innerHTML='<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Kabupaten</th><th style="text-align:right">Pagu 2025</th><th style="text-align:right">Realisasi 2025</th><th style="text-align:center">% 2025</th><th style="text-align:right">Pagu 2026</th><th style="text-align:right">Realisasi 2026</th><th style="text-align:center">% 2026</th></tr>'+
+    (angView.length?angView.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}</td><td>${esc(r.jenjang)}</td><td>${esc(r.kab)}</td><td style="text-align:right">${rpf(r.p25)}</td><td style="text-align:right">${rpf(r.r25)}</td><td style="text-align:center">${pct(r.pct25)}</td><td style="text-align:right">${rpf(r.p26)}</td><td style="text-align:right;${r.over26?'color:#b91c1c;font-weight:700':''}">${rpf(r.r26)}</td><td style="text-align:center;${r.over26?'color:#b91c1c;font-weight:700':''}">${r.over26?(r.p26?pct(r.pct26)+' ⚠':'Pagu 0 ⚠'):pct(r.pct26)}</td></tr>`).join('')+
+    `<tr style="background:#eef3ff;font-weight:700"><td colspan="5">TOTAL (2026 hanya baris valid ≤100%)</td><td style="text-align:right">${rpf(tp25)}</td><td style="text-align:right">${rpf(tr25)}</td><td style="text-align:center">${tp25?(tr25/tp25*100).toFixed(1)+'%':'-'}</td><td style="text-align:right">${rpf(tp26)}</td><td style="text-align:right">${rpf(tr26)}</td><td style="text-align:center">${tp26?(tr26/tp26*100).toFixed(1)+'%':'-'}</td></tr>`
+    :'<tr><td colspan="11" style="color:#888">Belum ada data anggaran sekolah</td></tr>');
+}
+function downloadAngSekolahXls(){
+  const h=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Pagu 2025 (Rp)','Realisasi 2025 (Rp)','% 2025','Pagu 2026 (Rp)','Realisasi 2026 (Rp)','% 2026','Catatan'];
+  const aoa=[h].concat(angView.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.p25,r.r25,r.pct25===null?'-':+r.pct25.toFixed(2),r.p26,r.r26,r.pct26===null?'-':+r.pct26.toFixed(2),r.over26?'Realisasi > Pagu':'OK']));
+  saveSheetsXls([['Anggaran_Per_Sekolah',aoa]],'realisasi_anggaran_2025_2026');
 }
 const validAng=arr=>arr.filter(r=>num(r.pagu)>0&&num(r.realisasi)<=num(r.pagu));
 function renderAngAnom(){
@@ -273,10 +325,14 @@ function charts_(){
 let view=[];
 function renderStatus(){
   const q=$('q').value.toLowerCase(),fk=$('fk').value,fj=$('fj').value,fs=$('fs').value,ff=$('ff').value;
-  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='luar'?!r.inMaster:(ff==='sudah')===r.sudah)));
+  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='luar'?!r.inMaster:(ff==='kurang'?(r.sudah&&r.jml<SEC.length):(ff==='sudah')===r.sudah))));
   $('cnt').textContent=view.length+' sekolah';
-  $('tstatus').innerHTML=`<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kabupaten</th><th>Kepala Sekolah</th><th>Terisi</th><th>Prestasi</th><th>Terakhir Kirim</th><th>Status</th></tr>`+
-   view.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`).join('');
+  $('tstatus').innerHTML=`<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kabupaten</th><th>Kepala Sekolah</th><th>Terisi</th><th>Belum Diisi</th><th>Prestasi</th><th>Terakhir Kirim</th><th>Status</th></tr>`+
+   view.map((r,i)=>{
+     const miss=missingSecs(r);
+     const missHtml=!r.sudah?'<span style="color:#94a3b8">Semua (01–09)</span>':(miss.length?`<span style="color:#b91c1c;font-size:.78rem">${esc(miss.join(', '))}</span>`:'<span style="color:#15803d;font-size:.78rem">✔ Lengkap</span>');
+     return `<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${missHtml}</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`;
+   }).join('');
 }
 function renderPrestasi(){
   const y=$('py').value,t=$('pt').value,q=$('pq').value.toLowerCase();
@@ -361,8 +417,8 @@ function cmpRender(){
   mkc('cc3',R.filter(r=>r.m.avg),'Rata-rata (TKA & Kelulusan %)');
 }
 function csv(){
-  const h=['NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian'];
-  const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu,r.sudah?'Sudah':'Belum']));
+  const h=['NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian'];
+  const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu,r.sudah?'Sudah':'Belum']));
   const s='\ufeff'+L.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='rekap_pengisian_sekolah.csv';a.click();
 }
@@ -390,8 +446,8 @@ function objsToAoa(arr){
   return [keys].concat(arr.map(o=>keys.map(k=>o[k]??'')));
 }
 function downloadStatusXls(){
-  const h=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
-  const aoa=[h].concat(view.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']));
+  const h=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
+  const aoa=[h].concat(view.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']));
   saveSheetsXls([['Status_Pengisian',aoa]],'status_pengisian_sekolah');
 }
 function downloadPrestasiXls(){
@@ -403,8 +459,8 @@ function downloadPrestasiXls(){
 }
 function downloadAllXls(){
   const sheets=[];
-  const hSt=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
-  sheets.push(['Status_Pengisian',[hSt].concat(rows.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']))]);
+  const hSt=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
+  sheets.push(['Status_Pengisian',[hSt].concat(rows.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']))]);
   const cmpAoa=[['Indikator','2025','2026','Selisih','Perubahan (%)','Jumlah Sekolah']].concat(METRICS.map(m=>{
     const sub=SCH.filter(x=>x.v25[m.k]!==null&&x.v25[m.k]!==undefined);
     const agg=a=>m.avg?(a.length?a.reduce((p,c)=>p+c,0)/a.length:0):a.reduce((p,c)=>p+c,0);
@@ -412,6 +468,10 @@ function downloadAllXls(){
     return [m.l,sub.length?a:'-',sub.length?b:'-',sub.length?d:'-',(sub.length&&a)?+(d/a*100).toFixed(2):'-',sub.length];
   }));
   sheets.push(['Perbandingan_25_26',cmpAoa]);
+  const angSch=buildAngPerSekolah();
+  if(angSch.length){
+    sheets.push(['Anggaran_Per_Sekolah',[['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Pagu 2025 (Rp)','Realisasi 2025 (Rp)','% 2025','Pagu 2026 (Rp)','Realisasi 2026 (Rp)','% 2026','Catatan']].concat(angSch.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.p25,r.r25,r.pct25===null?'-':+r.pct25.toFixed(2),r.p26,r.r26,r.pct26===null?'-':+r.pct26.toFixed(2),r.over26?'Realisasi > Pagu':'OK']))]);
+  }
   const badAng=g('02_Anggaran_Rinci').filter(r=>num(r.realisasi)>num(r.pagu));
   if(badAng.length){
     sheets.push(['Anomali_Anggaran',[['NPSN','Sekolah','Sumber Dana','Pagu','Realisasi','% Realisasi']].concat(badAng.map(r=>[r.NPSN,r.Nama_Sekolah,r.sumber,num(r.pagu),num(r.realisasi),num(r.pagu)?+(num(r.realisasi)/num(r.pagu)*100).toFixed(2):'Pagu 0']))]);
@@ -445,6 +505,8 @@ function printRekapCabdin(){
   validAng(angR).forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
   let totP=0,totR=0;
   const tblAng=Object.entries(src).map(([k,o])=>{totP+=o.p;totR+=o.r;return `<tr><td>${esc(k)}</td><td align="right">${rpf(o.p)}</td><td align="right">${rpf(o.r)}</td><td align="center">${o.p?(o.r/o.p*100).toFixed(2)+'%':'-'}</td></tr>`}).join('');
+  const angSchList=buildAngPerSekolah();
+  const tblAngSch=angSchList.length?angSchList.map((r,i)=>`<tr><td align="center">${i+1}</td><td>${esc(r.nama)}</td><td align="center">${esc(r.jenjang)}</td><td align="right" class="num">${r.p25?rpf(r.p25):'-'}</td><td align="right" class="num">${r.r25?rpf(r.r25):'-'}</td><td align="center">${r.pct25===null?'-':r.pct25.toFixed(1)+'%'}</td><td align="right" class="num">${r.p26?rpf(r.p26):'-'}</td><td align="right" class="num">${r.r26?rpf(r.r26):'-'}</td><td align="center" style="${r.over26?'color:#b91c1c;font-weight:700':''}">${r.pct26===null?'-':r.pct26.toFixed(1)+'%'+(r.over26?' ⚠':'')}</td></tr>`).join(''):'<tr><td colspan="9" align="center">Belum ada data anggaran per sekolah</td></tr>';
 
   // Prestasi A-E & F
   const KAT=['A. Akademik & Talenta Siswa','B. SMK','C. SLB','D. Nonakademik Lainnya','E. Guru/Kepala Sekolah/GTK'];
@@ -545,6 +607,8 @@ ${noteBlock(prof,'kebutuhan','Peta Kebutuhan & Pemerataan Layanan')}
 ${secHdr('02','ANGGARAN DAN TATA KELOLA')}
 <table><thead><tr><th>Sumber Dana</th><th style="text-align:right">Pagu (Rp)</th><th style="text-align:right">Realisasi (Rp)</th><th style="text-align:center">% Realisasi</th></tr></thead><tbody>${tblAng||'<tr><td colspan="4" align="center">Belum ada data anggaran</td></tr>'}
 <tr class="tot"><th>TOTAL</th><th style="text-align:right" class="num">${rpf(totP)}</th><th style="text-align:right" class="num">${rpf(totR)}</th><th style="text-align:center">${totP?(totR/totP*100).toFixed(2)+'%':'-'}</th></tr></tbody></table>
+<p class="sub"><b>Daftar Realisasi Anggaran 2025 &amp; 2026 per Sekolah</b></p>
+<table><thead><tr><th style="text-align:center">No</th><th>Sekolah</th><th style="text-align:center">Jenjang</th><th style="text-align:right">Pagu 2025</th><th style="text-align:right">Realisasi 2025</th><th style="text-align:center">% 2025</th><th style="text-align:right">Pagu 2026</th><th style="text-align:right">Realisasi 2026</th><th style="text-align:center">% 2026</th></tr></thead><tbody>${tblAngSch}</tbody></table>
 <p class="sub"><b>Status LPJ BOS/BPOPP</b></p><div class="pill-row">${pillList(ang2,'lpj')}</div>
 <p class="sub"><b>Temuan Pemeriksaan / Audit 2026</b></p><div class="pill-row">${pillList(ang2,'temuan')}</div>
 ${noteBlock(ang2,'temuan_uraian','Uraian Temuan & Tindak Lanjut')}${noteBlock(ang2,'anggaran_masalah','Kendala Pengelolaan Anggaran')}

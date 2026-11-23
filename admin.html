@@ -77,7 +77,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <select id="fk" onchange="renderStatus()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
 <select id="fj" onchange="renderStatus()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
 <select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
-<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option></select>
+<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
 <button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
 <span id="cnt"></span></div>
 <div class="tw"><table id="tstatus"></table></div>
@@ -153,23 +153,55 @@ function build(){
   Object.keys(D).forEach(n=>{if(/^(0\d|10)_/.test(n))D[n].forEach(r=>touch(r,n==='10_Data2025'?'':n))});
   g('06_Prestasi').forEach(r=>{const o=map[String(r.NPSN).trim()];if(o)o.prestasi++});
   const master=g('Master_Sekolah');
-  const mNama=m=>m.Nama||m.Nama_Sekolah||m['Nama Sekolah']||'';
-  rows=Object.values(map).map(o=>({...o,sudah:true,jml:o.secs.size}));
-  master.forEach(m=>{const k=String(m.NPSN||'').trim();if(!k||map[k])return;
-    rows.push({npsn:k,nama:mNama(m),jenjang:m.Jenjang,status:m.Status,kab:m.Kabupaten,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,kepsek:''})});
-  rows.forEach(o=>{if(master.length){const m=master.find(x=>String(x.NPSN||'').trim()===o.npsn);if(m){o.nama=o.nama||mNama(m);o.jenjang=o.jenjang||m.Jenjang;o.status=o.status||m.Status;o.kab=o.kab||m.Kabupaten}}});
+  const pick=(obj,keys)=>{
+    const ks=Object.keys(obj||{});
+    for(const t of keys){const f=ks.find(k=>k.trim().toLowerCase()===t);if(f!==undefined&&String(obj[f]??'').trim()!=='')return String(obj[f]).trim()}
+    return '';
+  };
+  const masterMap={};
+  master.forEach(m=>{
+    const k=pick(m,['npsn']);if(!k||masterMap[k])return;
+    masterMap[k]={
+      npsn:k,
+      nama:pick(m,['nama','nama_sekolah','nama sekolah','sekolah']),
+      jenjang:pick(m,['jenjang','bentuk pendidikan','bentuk_pendidikan']).toUpperCase(),
+      status:pick(m,['status']),
+      kab:pick(m,['kabupaten','kab','kab/kota','kabupaten/kota'])
+    };
+  });
+  const hasMaster=Object.keys(masterMap).length>0;
+  rows=Object.values(map).map(o=>{
+    const m=masterMap[o.npsn];
+    return {
+      ...o,
+      nama:o.nama||(m?m.nama:''),
+      jenjang:String(o.jenjang||(m?m.jenjang:'')).trim().toUpperCase(),
+      status:o.status||(m?m.status:''),
+      kab:o.kab||(m?m.kab:''),
+      inMaster:!hasMaster||!!m,
+      sudah:true,
+      jml:o.secs.size
+    };
+  });
+  Object.values(masterMap).forEach(m=>{
+    if(map[m.npsn])return;
+    rows.push({npsn:m.npsn,nama:m.nama,jenjang:m.jenjang,status:m.status,kab:m.kab,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,inMaster:true,kepsek:''});
+  });
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderStatus();renderPrestasi();renderIndikator();cmpInit();
 }
 function kpi(){
-  const sudah=rows.filter(r=>r.sudah).length,tot=rows.length;
+  const hasMaster=g('Master_Sekolah').length>0;
+  const masterRows=hasMaster?rows.filter(r=>r.inMaster):rows;
+  const luarCount=hasMaster?rows.filter(r=>!r.inMaster).length:0;
+  const sudah=masterRows.filter(r=>r.sudah).length,tot=masterRows.length;
   const prof=g('01_Profil'),ang=g('02_Anggaran_Rinci'),pr=g('06_Prestasi');
   const pr26=pr.filter(r=>String(r.tahun||'2026')==='2026'),pr25=pr.length-pr26.length;
   const siswa=prof.reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0);
   const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0);
   const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
   const nas26=pr26.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
-  const K=[[sudah+(g('Master_Sekolah').length?' / '+tot:''),'Sekolah sudah mengisi'],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
+  const K=[[sudah+(hasMaster?' / '+tot:''),'Sekolah sudah mengisi'+(luarCount?` (+${luarCount} di luar Master)`:'')],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
    [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026']];
   $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
 }
@@ -220,10 +252,10 @@ function charts_(){
 let view=[];
 function renderStatus(){
   const q=$('q').value.toLowerCase(),fk=$('fk').value,fj=$('fj').value,fs=$('fs').value,ff=$('ff').value;
-  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='sudah')===r.sudah));
+  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='luar'?!r.inMaster:(ff==='sudah')===r.sudah)));
   $('cnt').textContent=view.length+' sekolah';
   $('tstatus').innerHTML=`<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kabupaten</th><th>Kepala Sekolah</th><th>Terisi</th><th>Prestasi</th><th>Terakhir Kirim</th><th>Status</th></tr>`+
-   view.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`).join('');
+   view.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`).join('');
 }
 function renderPrestasi(){
   const y=$('py').value,t=$('pt').value,q=$('pq').value.toLowerCase();

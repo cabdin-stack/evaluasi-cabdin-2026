@@ -29,7 +29,20 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 #login{max-width:360px;margin:80px auto;text-align:center}
 #login input{width:100%;margin:10px 0}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
-@media print{header .btn,.bar,#tabs{display:none}}
+@media print{
+  body{background:#fff}
+  header .btn,.bar,#tabs{display:none}
+  header{-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:10px 14px}
+  .wrap{max-width:none;padding:8px 0}
+  .card{border:1px solid #cbd5e1;padding:10px;margin-bottom:10px}
+  .tw{max-height:none !important;overflow:visible !important}
+  table{font-size:7.5pt;width:100%}
+  th,td{padding:3px 4px;word-break:break-word}
+  th{position:static !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tr,.charts .card,.kpi div{break-inside:avoid;page-break-inside:avoid}
+  .charts{grid-template-columns:repeat(2,1fr);gap:10px}
+  .charts .card canvas{max-height:220px}
+}
 </style>
 </head>
 <body>

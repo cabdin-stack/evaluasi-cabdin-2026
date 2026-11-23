@@ -130,8 +130,8 @@ const METRICS=[
  {k:'lolos_prov',l:'Lolos/Juara tingkat Provinsi',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_prov','2026');return (S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025')?_ind(S,'lolos_prov','2025'):_v25(S,'',[],'lolos_prov')}},
  {k:'lolos_nas',l:'Menembus tingkat Nasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_nas','2026');return (S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025')?_ind(S,'lolos_nas','2025'):_v25(S,'',[],'lolos_nas')}},
  {k:'juara_int',l:'Prestasi Internasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'juara_int','2026');return (S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025')?_ind(S,'juara_int','2025'):_v25(S,'',[],'juara_int')}},
- {k:'pagu',l:'Total pagu anggaran (Rp)',rp:1,f:(S,yr)=>yr==='2025'?_v25(S,'',[],'pagu'):_sum(S,'02_Anggaran_Rinci','pagu')},
- {k:'real',l:'Total realisasi anggaran (Rp)',rp:1,f:(S,yr)=>yr==='2025'?_v25(S,'',[],'real'):_sum(S,'02_Anggaran_Rinci','realisasi')}
+ {k:'pagu',l:'Total pagu anggaran (Rp)',rp:1,f:(S,yr)=>{if(yr==='2026')return _sum(S,'02_Anggaran_Rinci','pagu');return (S['02_Anggaran_Rinci']||[]).some(r=>_has(r,'pagu_2025'))?_sum(S,'02_Anggaran_Rinci','pagu_2025'):_v25(S,'',[],'pagu')}},
+ {k:'real',l:'Total realisasi anggaran (Rp)',rp:1,f:(S,yr)=>{if(yr==='2026')return _sum(S,'02_Anggaran_Rinci','realisasi');return (S['02_Anggaran_Rinci']||[]).some(r=>_has(r,'realisasi_2025'))?_sum(S,'02_Anggaran_Rinci','realisasi_2025'):_v25(S,'',[],'real')}}
 ];
 function compareRows(S){
   return METRICS.map(m=>({m,v25:m.f(S,'2025'),v26:m.f(S,'2026')}));
@@ -239,11 +239,7 @@ const SECTIONS = [
   A('t_kompetensi','Penguatan kompetensi lulusan'),
   A('t_sarpras','Pemerataan sarana & kualitas layanan (usulan)'),
   A('t_tatakelola','Penguatan tata kelola & akuntabilitas'),
-  A('t_indikator','Target & indikator keberhasilan 2027 lainnya')]}]},
-
-{id:'10_Data2025',title:'10. Data Anggaran 2025',groups:[{
-  h:'Indikator 2025 lainnya (siswa, guru, sarpras, mutu, prestasi) sudah diisi langsung pada kolom 2025 di bagian 01, 03, 04, dan 06. Isi total anggaran tahun 2025 di bawah ini sebagai pembanding (kosongkan bila tidak ada data).',
-  f:[N('pagu25','Total pagu anggaran 2025 (Rp)'),N('real25','Total realisasi anggaran 2025 (Rp)')]}]}
+  A('t_indikator','Target & indikator keberhasilan 2027 lainnya')]}]}
 ];
 
 const KATEGORI=['A. Akademik & Talenta Siswa','B. SMK','C. SLB','D. Nonakademik Lainnya','E. Guru/Kepala Sekolah/GTK'];
@@ -283,13 +279,17 @@ SECTIONS.forEach((s,i)=>{
     <h3>Daftar Prestasi Rinci</h3><div id="prestasiRows"></div>
     <button type="button" class="btn sec" onclick="addPrestasi()">+ Tambah Prestasi</button>`;
   } else {
-    if(s.custom==='anggaran')h+=`<h3>Pagu dan Realisasi Anggaran 2026 (Rupiah, angka penuh)</h3>
+    if(s.custom==='anggaran')h+=`<h3>Pagu dan Realisasi Anggaran 2025 &amp; 2026 (Rupiah, angka penuh)</h3>
     <div id="angRows"></div>
     <button type="button" class="btn sec" onclick="addAng()">+ Tambah Sumber Dana</button>
-    <div class="grid" style="margin-top:14px;background:#eef3ff;padding:12px;border-radius:10px">
-      <div><label>TOTAL Realisasi</label><input name="total_real" readonly></div>
-      <div><label>TOTAL % Realisasi</label><input name="total_persen" readonly></div>
-      <div><label>Sisa Anggaran</label><input name="total_sisa" readonly></div></div>`;
+    <div class="grid" style="margin-top:14px;background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:10px">
+      <div><label>TOTAL Realisasi 2025</label><input name="total_real_2025" readonly></div>
+      <div><label>TOTAL % Realisasi 2025</label><input name="total_persen_2025" readonly></div>
+      <div><label>Sisa Anggaran 2025</label><input name="total_sisa_2025" readonly></div></div>
+    <div class="grid" style="margin-top:8px;background:#eef3ff;padding:12px;border-radius:10px">
+      <div><label>TOTAL Realisasi 2026</label><input name="total_real" readonly></div>
+      <div><label>TOTAL % Realisasi 2026</label><input name="total_persen" readonly></div>
+      <div><label>Sisa Anggaran 2026</label><input name="total_sisa" readonly></div></div>`;
     const singleNum=s.id.startsWith('09')||s.id.startsWith('10');
     s.groups.forEach(g=>{h+=(g.h?`<h3>${g.h}</h3>`:'')+`<div class="grid">${g.f.map(f=>fieldHTML(f,'',singleNum)).join('')}</div>`});
   }
@@ -309,26 +309,36 @@ const FIXED_ANG=['BOS','BPOPP','DAK','Revitalisasi','Bantuan Pendidikan Lain'];
 function addAng(nama=''){
   const fixed=!!nama;
   const d=el(`<div class="row"><div class="grid">
-   <div><label>Sumber Dana</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
-   <div><label>Pagu (Rp)</label><input type="number" min="0" name="pagu"></div>
-   <div><label>Realisasi (Rp)</label><input type="number" min="0" name="realisasi"></div>
-   <div><label>% Realisasi</label><input name="persen" readonly placeholder="otomatis"></div></div>
+   <div class="full"><label>Sumber Dana</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
+   <div><label>Pagu 2025 (Rp)</label><input type="number" min="0" name="pagu_2025"></div>
+   <div><label>Realisasi 2025 (Rp)</label><input type="number" min="0" name="realisasi_2025"></div>
+   <div><label>% Realisasi 2025</label><input name="persen_2025" readonly placeholder="otomatis"></div>
+   <div><label>Pagu 2026 (Rp)</label><input type="number" min="0" name="pagu"></div>
+   <div><label>Realisasi 2026 (Rp)</label><input type="number" min="0" name="realisasi"></div>
+   <div><label>% Realisasi 2026</label><input name="persen" readonly placeholder="otomatis"></div></div>
    ${fixed?'':'<button type="button" class="btn del" onclick="this.parentNode.remove();calcAng();save()">Hapus</button>'}</div>`);
   document.getElementById('angRows').appendChild(d);
 }
 FIXED_ANG.forEach(addAng);
 const rp=v=>(v<0?'-Rp ':'Rp ')+Math.round(Math.abs(v)).toLocaleString('id-ID');
 function calcAng(){
-  let tp=0,tr=0;
-  document.querySelectorAll('#angRows .row').forEach(r=>{
-    const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
-    const pc=r.querySelector('[name=persen]');
+  let tp25=0,tr25=0,tp=0,tr=0;
+  const setPct=(pc,p,rl)=>{
     const over=(p>0&&rl>p)||(p===0&&rl>0);
     pc.value=p?(rl/p*100).toFixed(2)+'%'+(over?' ⚠ >100%':''):(rl>0?'⚠ Pagu kosong':'');
     pc.style.background=over?'#fee2e2':'';pc.style.color=over?'#b91c1c':'';pc.style.fontWeight=over?'700':'';
-    tp+=p;tr+=rl;
+  };
+  document.querySelectorAll('#angRows .row').forEach(r=>{
+    const p25=+r.querySelector('[name=pagu_2025]').value||0,r25=+r.querySelector('[name=realisasi_2025]').value||0;
+    const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
+    setPct(r.querySelector('[name=persen_2025]'),p25,r25);
+    setPct(r.querySelector('[name=persen]'),p,rl);
+    tp25+=p25;tr25+=r25;tp+=p;tr+=rl;
   });
   const q=n=>document.querySelector(`[name=${n}]`);
+  q('total_real_2025').value=tr25?rp(tr25):'';
+  q('total_persen_2025').value=tp25?(tr25/tp25*100).toFixed(2)+'%':'';
+  q('total_sisa_2025').value=tp25?rp(tp25-tr25):'';
   q('total_real').value=tr?rp(tr):'';
   q('total_persen').value=tp?(tr/tp*100).toFixed(2)+'%':'';
   q('total_sisa').value=tp?rp(tp-tr):'';
@@ -491,7 +501,8 @@ function printRekap(d){
     }
     const o=S[sec.id]||{};
     if(sec.custom==='anggaran'){
-      rekap+=`<b>Pagu dan Realisasi Anggaran 2026</b>`+(ang.length?`<table><tr><th>Sumber Dana</th><th>Pagu</th><th>Realisasi</th><th>%</th></tr>${ang.map(r=>`<tr><td>${esc(r.sumber)}</td><td align="right">${rpf(+r.pagu||0)}</td><td align="right">${rpf(+r.realisasi||0)}</td><td align="center">${+r.pagu?((+r.realisasi||0)/+r.pagu*100).toFixed(2)+'%':'-'}</td></tr>`).join('')}<tr><th>TOTAL</th><th align="right">${rpf(tp)}</th><th align="right">${rpf(tr)}</th><th>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</th></tr></table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
+      const tp25=ang.reduce((a,r)=>a+(+r.pagu_2025||0),0),tr25=ang.reduce((a,r)=>a+(+r.realisasi_2025||0),0);
+      rekap+=`<b>Pagu dan Realisasi Anggaran 2025 &amp; 2026</b>`+(ang.length?`<table><tr><th>Sumber Dana</th><th>Pagu 2025</th><th>Realisasi 2025</th><th>% 2025</th><th>Pagu 2026</th><th>Realisasi 2026</th><th>% 2026</th></tr>${ang.map(r=>`<tr><td>${esc(r.sumber)}</td><td align="right">${+r.pagu_2025?rpf(+r.pagu_2025):'-'}</td><td align="right">${+r.realisasi_2025?rpf(+r.realisasi_2025):'-'}</td><td align="center">${+r.pagu_2025?((+r.realisasi_2025||0)/+r.pagu_2025*100).toFixed(2)+'%':'-'}</td><td align="right">${+r.pagu?rpf(+r.pagu):'-'}</td><td align="right">${+r.realisasi?rpf(+r.realisasi):'-'}</td><td align="center">${+r.pagu?((+r.realisasi||0)/+r.pagu*100).toFixed(2)+'%':'-'}</td></tr>`).join('')}<tr><th>TOTAL</th><th align="right">${tp25?rpf(tp25):'-'}</th><th align="right">${tr25?rpf(tr25):'-'}</th><th>${tp25?(tr25/tp25*100).toFixed(2)+'%':'-'}</th><th align="right">${rpf(tp)}</th><th align="right">${rpf(tr)}</th><th>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</th></tr></table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
     }
     const singleNum=sec.id.startsWith('09')||sec.id.startsWith('10');
     sec.groups.forEach(g=>{
@@ -568,6 +579,7 @@ function fillSample(){
   document.querySelectorAll('#angRows .row').forEach((r,i)=>{
     const pg=[1250000000,800000000,500000000,1500000000,100000000,50000000][i];
     const sm=r.querySelector('[name=sumber]');if(!sm.value)setVal(sm,'Dana Komite (contoh)');
+    setVal(r.querySelector('[name=pagu_2025]'),Math.round(pg*0.92));setVal(r.querySelector('[name=realisasi_2025]'),Math.round(pg*0.92*(0.72+0.04*i)));
     setVal(r.querySelector('[name=pagu]'),pg);setVal(r.querySelector('[name=realisasi]'),Math.round(pg*(0.7+0.05*i)));
   });
   document.querySelectorAll('#pages [name]').forEach(x=>{
@@ -629,7 +641,7 @@ function build(){
       if(pr.length)sec['06_Prestasi']=pr;
     } else {
       if(p.dataset.id==='02_Anggaran'){
-        const ang=collectRows(p.querySelector('#angRows')).filter(r=>r.pagu!==''||r.realisasi!=='');
+        const ang=collectRows(p.querySelector('#angRows')).filter(r=>r.pagu_2025!==''||r.realisasi_2025!==''||r.pagu!==''||r.realisasi!=='');
         if(ang.length)sec['02_Anggaran_Rinci']=ang;
       }
       const o=collect(p);
@@ -658,15 +670,17 @@ async function submitAll(){
       const i=+x.closest('section').dataset.i;go(i);x.reportValidity();return;
     }
   }
-  // Cek anggaran: realisasi tidak boleh melebihi pagu
+  // Cek anggaran 2025 & 2026: realisasi tidak boleh melebihi pagu
   for(const r of document.querySelectorAll('#angRows .row')){
     const sm=r.querySelector('[name=sumber]').value||'Sumber Dana';
-    const p=+r.querySelector('[name=pagu]').value||0,rl=+r.querySelector('[name=realisasi]').value||0;
-    if(rl>p){
-      const i=+r.closest('section').dataset.i;go(i);
-      r.querySelector('[name=realisasi]').focus();
-      toast(`Realisasi "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
-      return;
+    for(const [yr,pk,rk] of [['2025','pagu_2025','realisasi_2025'],['2026','pagu','realisasi']]){
+      const p=+r.querySelector(`[name=${pk}]`).value||0,rl=+r.querySelector(`[name=${rk}]`).value||0;
+      if(rl>p){
+        const i=+r.closest('section').dataset.i;go(i);
+        r.querySelector(`[name=${rk}]`).focus();
+        toast(`Realisasi ${yr} "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
+        return;
+      }
     }
   }
   if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi di index.html',false);return}

@@ -352,22 +352,31 @@ pages.children[0].insertAdjacentHTML('afterbegin',`<div class="note" style="back
 Hanya sekolah yang terdaftar di <b>Master_Sekolah</b> Cabdin Wilayah Jember yang dapat mengisi. Jika sudah pernah mengirim, data lama otomatis dimuat untuk direvisi.
 <div id="npsnStatus"></div></div>`);
 
+function normIdVal(k,v){
+  const s=String(v??'').trim();
+  if(!s)return '';
+  if(k==='jenjang'){const u=s.toUpperCase();if(/SMA/.test(u))return 'SMA';if(/SMK/.test(u))return 'SMK';if(/SLB/.test(u))return 'SLB';return u}
+  if(k==='status'){if(/negeri/i.test(s))return 'Negeri';if(/swasta/i.test(s))return 'Swasta';return s}
+  if(k==='kabupaten'){if(/jember/i.test(s))return 'Jember';if(/lumajang/i.test(s))return 'Lumajang';return s}
+  return s;
+}
 function setMasterLock(master){
   const idPage=pages.children[0];
   ['nama','jenjang','status','kabupaten','kecamatan'].forEach(k=>{
     const x=idPage.querySelector(`[name="${k}"]`);
     if(!x)return;
-    const mv=master&&master[k];
+    const mv=master?normIdVal(k,master[k]):'';
     if(mv){
       setVal(x,mv);
-      if(k!=='kecamatan'){
+      // Kunci HANYA jika nilai benar-benar cocok & terisi (jangan pernah mengunci dropdown kosong)
+      if(k!=='kecamatan'&&x.value){
         if(x.tagName==='SELECT'){x.dataset.locked='1';x.style.pointerEvents='none';x.tabIndex=-1;}
         else x.readOnly=true;
+        return;
       }
-    } else {
-      if(x.tagName==='SELECT'){delete x.dataset.locked;x.style.pointerEvents='';x.tabIndex=0;}
-      else x.readOnly=false;
     }
+    if(x.tagName==='SELECT'){delete x.dataset.locked;x.style.pointerEvents='';x.tabIndex=0;}
+    else x.readOnly=false;
   });
 }
 function resetFormFields(keepNpsn=''){
@@ -388,7 +397,7 @@ function fillPage(p,obj){
     let v=obj[x.name];
     // kompatibilitas data lama (tanpa akhiran _2026)
     if((v===undefined||v==='')&&x.name.endsWith('_2026'))v=obj[x.name.slice(0,-5)];
-    if(v!==undefined&&v!=='')setVal(x,v);
+    if(v!==undefined&&v!=='')setVal(x,normIdVal(x.name,v));
   });
 }
 function populateFromData(d,master=null){

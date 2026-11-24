@@ -599,6 +599,17 @@ const _v25=(S,s,ks,k25)=>{
   if(has(o,k25+'25'))return num(o[k25+'25']);
   return null;
 };
+const _angBy=(S,re,field,yr)=>{
+  const list=(S['02_Anggaran_Rinci']||[]).filter(r=>re.test(String(r.sumber||'').trim()));
+  if(!list.length)return yr==='2025'?null:0;
+  if(yr==='2025'){
+    const k=field+'_2025';
+    const valid=list.filter(r=>has(r,k)&&num(r.realisasi_2025)<=num(r.pagu_2025));
+    return valid.length?valid.reduce((a,r)=>a+num(r[k]),0):null;
+  }
+  const valid=list.filter(r=>num(r.pagu)>0&&num(r.realisasi)<=num(r.pagu));
+  return valid.reduce((a,r)=>a+num(r[field]),0);
+};
 const METRICS=[
  {k:'siswa',l:'Jumlah siswa',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['siswa_L','siswa_P'],'siswa'):_s(S,'01_Profil',['siswa_L','siswa_P'],'2026')},
  {k:'rombel',l:'Jumlah rombel',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['rombel'],'rombel'):_s(S,'01_Profil',['rombel'],'2026')},
@@ -615,8 +626,14 @@ const METRICS=[
  {k:'lolos_prov',l:'Lolos/Juara tingkat Provinsi',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_prov','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'lolos_prov','2025'):_v25(S,'',[],'lolos_prov')}},
  {k:'lolos_nas',l:'Menembus tingkat Nasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_nas','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'lolos_nas','2025'):_v25(S,'',[],'lolos_nas')}},
  {k:'juara_int',l:'Prestasi Internasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'juara_int','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'juara_int','2025'):_v25(S,'',[],'juara_int')}},
- {k:'pagu',l:'Total pagu anggaran (Rp)',rp:1,f:(S,yr)=>{if(yr==='2026')return _sum(S,'02_Anggaran_Rinci','pagu');return (S['02_Anggaran_Rinci']||[]).some(r=>has(r,'pagu_2025'))?_sum(S,'02_Anggaran_Rinci','pagu_2025'):_v25(S,'',[],'pagu')}},
- {k:'real',l:'Total realisasi anggaran (Rp)',rp:1,f:(S,yr)=>{if(yr==='2026')return _sum(S,'02_Anggaran_Rinci','realisasi');return (S['02_Anggaran_Rinci']||[]).some(r=>has(r,'realisasi_2025'))?_sum(S,'02_Anggaran_Rinci','realisasi_2025'):_v25(S,'',[],'real')}}];
+ {k:'bos_pagu',l:'Pagu BOS (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^bos\b/i,'pagu',yr)},
+ {k:'bos_real',l:'Realisasi BOS (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^bos\b/i,'realisasi',yr)},
+ {k:'bpopp_pagu',l:'Pagu BPOPP (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bpopp/i,'pagu',yr)},
+ {k:'bpopp_real',l:'Realisasi BPOPP (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bpopp/i,'realisasi',yr)},
+ {k:'revit_pagu',l:'Pagu Revitalisasi (Rp)',rp:1,f:(S,yr)=>_angBy(S,/revitalisasi/i,'pagu',yr)},
+ {k:'revit_real',l:'Realisasi Revitalisasi (Rp)',rp:1,f:(S,yr)=>_angBy(S,/revitalisasi/i,'realisasi',yr)},
+ {k:'lain_pagu',l:'Pagu Bantuan Pendidikan Lain (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bantuan pendidikan lain/i,'pagu',yr)},
+ {k:'lain_real',l:'Realisasi Bantuan Pendidikan Lain (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bantuan pendidikan lain/i,'realisasi',yr)}];
 const LISTS=['02_Anggaran_Rinci','06_Indikator_Prestasi','06_Prestasi'];
 const fmtN=(v,m)=>(m.rp?'Rp ':'')+(m.rp?Math.round(v):+v).toLocaleString('id-ID',{maximumFractionDigits:2});
 let SCH=[],cch=[];

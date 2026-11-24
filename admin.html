@@ -127,12 +127,18 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <span id="acnt"></span></div>
 <div class="tw"><table id="tangSch"></table></div></div>
 
-<div class="card"><h2>Daftar Prestasi</h2>
+<div class="card"><h2>Daftar Prestasi 2025 &amp; 2026</h2>
+<p style="font-size:.8rem;margin:0 0 8px;color:#475569">Klik kartu tingkat prestasi di bawah atau gunakan filter untuk menyaring daftar prestasi.</p>
+<div id="presKpi" class="ang-kpis"></div>
+<div class="tw" style="margin-bottom:12px"><table id="tpresJenj"></table></div>
 <div class="bar"><select id="py" onchange="renderPrestasi()"><option value="">Semua Tahun</option><option>2026</option><option>2025</option></select>
 <select id="pt" onchange="renderPrestasi()"><option value="">Semua Tingkat</option><option>Kabupaten</option><option>Provinsi</option><option>Nasional</option><option>Internasional</option></select>
+<select id="pk" onchange="renderPrestasi()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
+<select id="pj" onchange="renderPrestasi()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
 <select id="ps" onchange="renderPrestasi()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
 <input id="pq" placeholder="Cari nama/lomba/sekolah" oninput="renderPrestasi()">
-<button class="btn" style="background:#0f766e" onclick="downloadPrestasiXls()">⬇ Unduh Excel</button></div>
+<button class="btn" style="background:#0f766e" onclick="downloadPrestasiXls()">⬇ Unduh XLS</button>
+<span id="pcnt"></span></div>
 <div class="tw"><table id="tpres"></table></div></div>
 
 <div class="card"><h2>Rekap Indikator Utama Prestasi</h2>
@@ -588,11 +594,47 @@ function renderStatus(){
      return `<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${missHtml}</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${stCls}">${stTxt}</td></tr>`;
    }).join('');
 }
+function pickPresTingkat(t){
+  const sel=$('pt');sel.value=(sel.value===t?'':t);renderPrestasi();
+}
 function renderPrestasi(){
-  const y=$('py').value,t=$('pt').value,s=$('ps').value,q=$('pq').value.toLowerCase();
-  const v=g('06_Prestasi').filter(r=>(!y||String(r.tahun||'2026')===y)&&(!t||r.tingkat===t)&&(!s||normStat(r.Status)===s)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
-  $('tpres').innerHTML=`<tr><th>Tahun</th><th>Sekolah</th><th>Status</th><th>Kategori</th><th>Peraih</th><th>Lomba</th><th>Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Lanjut</th><th>Bukti</th></tr>`+
-   v.map(r=>`<tr><td>${esc(r.tahun||'2026')}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(normStat(r.Status))}</td><td>${esc(r.kategori)}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)}</td><td>${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td>${/^https?:/.test(r.bukti)?`<a href="${esc(r.bukti)}" target="_blank" rel="noopener noreferrer">Lihat</a>`:esc(r.bukti)}</td></tr>`).join('');
+  const y=$('py').value,t=$('pt').value,k=$('pk').value,j=$('pj').value,s=$('ps').value,q=$('pq').value.toLowerCase();
+  const base=g('06_Prestasi').filter(r=>(!k||normKab(r.Kabupaten)===k)&&(!j||String(r.Jenjang||'').trim().toUpperCase()===j)&&(!s||normStat(r.Status)===s)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const TING=['Kabupaten','Provinsi','Nasional','Internasional'];
+  const TCOL={'Kabupaten':'#1d4ed8','Provinsi':'#16a34a','Nasional':'#d97706','Internasional':'#7c3aed'};
+  const win=r=>/Juara|Emas|Perak|Perunggu|Harapan/.test(r.peringkat||'');
+  const baseY=y?base.filter(r=>String(r.tahun||'2026')===y):base;
+  const totAll=baseY.length||1;
+
+  // Kartu indikator per tingkat prestasi
+  $('presKpi').innerHTML=TING.map(tg=>{
+    const L=base.filter(r=>r.tingkat===tg);
+    const n25=L.filter(r=>String(r.tahun)==='2025').length,n26=L.filter(r=>String(r.tahun||'2026')==='2026').length;
+    const LY=y?L.filter(r=>String(r.tahun||'2026')===y):L;
+    const juara=LY.filter(win).length,sch=new Set(LY.map(r=>String(r.NPSN||'').trim()).filter(Boolean)).size;
+    const pct=baseY.length?(LY.length/totAll*100):0,col=TCOL[tg]||'#1d4ed8';
+    const nLbl=y?`${LY.length} prestasi`:`2025: ${n25} · 2026: ${n26}`;
+    return `<div class="ang-k${t===tg?' on':''}" style="border-top-color:${col}" onclick="pickPresTingkat('${tg}')">
+      <div class="ak-h"><span>${tg}</span><span style="font-size:.7rem;color:#1d4ed8;background:#dbeafe;padding:1px 7px;border-radius:99px;font-weight:700">${nLbl}</span></div>
+      <div class="ak-p" style="color:${col}">${LY.length} <span style="font-size:.82rem;font-weight:600;color:#64748b">(${pct.toFixed(1)}%)</span></div>
+      <div class="ak-bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>
+      <div class="ak-sub">Juara/Medali: <b>${juara}</b> · Lembaga: <b>${sch}</b></div>
+    </div>`;
+  }).join('');
+
+  // Tabel ringkasan prestasi per jenjang (2025 & 2026)
+  const J=['SMA','SMK','SLB'];
+  const cntJT=(jn,tg,yr)=>base.filter(r=>String(r.Jenjang||'').trim().toUpperCase()===jn&&(!tg||r.tingkat===tg)&&(yr==='2026'?String(r.tahun||'2026')==='2026':String(r.tahun)==='2025')).length;
+  const totT=(tg,yr)=>J.reduce((a,jn)=>a+cntJT(jn,tg,yr),0);
+  $('tpresJenj').innerHTML=`<tr><th rowspan="2">Jenjang</th>${TING.map(tg=>`<th colspan="2" style="text-align:center">${tg}</th>`).join('')}<th colspan="2" style="text-align:center;background:#dbeafe">Total Prestasi</th></tr>
+    <tr>${TING.concat(['']).map(()=>'<th style="text-align:center">2025</th><th style="text-align:center">2026</th>').join('')}</tr>`+
+    J.map(jn=>`<tr><td><b>${jn}</b></td>${TING.map(tg=>`<td style="text-align:center">${cntJT(jn,tg,'2025')}</td><td style="text-align:center"><b>${cntJT(jn,tg,'2026')}</b></td>`).join('')}<td style="text-align:center">${cntJT(jn,'','2025')}</td><td style="text-align:center"><b>${cntJT(jn,'','2026')}</b></td></tr>`).join('')+
+    `<tr class="tot" style="background:#eef3ff;font-weight:700"><td>TOTAL</td>${TING.map(tg=>`<td style="text-align:center">${totT(tg,'2025')}</td><td style="text-align:center">${totT(tg,'2026')}</td>`).join('')}<td style="text-align:center">${totT('','2025')}</td><td style="text-align:center">${totT('','2026')}</td></tr>`;
+
+  const v=baseY.filter(r=>!t||r.tingkat===t);
+  $('pcnt').textContent=v.length+' prestasi'+(t?' ('+t+')':'');
+  $('tpres').innerHTML=`<tr><th>No</th><th>Tahun</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kategori</th><th>Peraih</th><th>Lomba</th><th>Bidang</th><th>Tingkat</th><th>Peringkat</th><th>Lanjut</th><th>Bukti</th></tr>`+
+   (v.length?v.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.tahun||'2026')}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(r.Jenjang)}</td><td>${esc(normStat(r.Status))}</td><td>${esc(r.kategori)}</td><td>${esc(r.nama_peraih)} (${esc(r.peran)})</td><td>${esc(r.lomba)}</td><td>${esc(r.bidang)}</td><td>${esc(r.tingkat)}</td><td>${esc(r.peringkat)}</td><td>${esc(r.lanjut)}</td><td>${/^https?:/.test(r.bukti)?`<a href="${esc(r.bukti)}" target="_blank" rel="noopener noreferrer">Lihat</a>`:esc(r.bukti)}</td></tr>`).join(''):'<tr><td colspan="13" style="color:#888">Belum ada data prestasi</td></tr>');
 }
 function renderIndikator(){
   const y=$('iy').value,s=$('is').value,q=$('iq').value.toLowerCase();
@@ -722,8 +764,8 @@ function downloadStatusXls(){
   saveSheetsXls([['Status_Pengisian',aoa]],'status_pengisian_sekolah');
 }
 function downloadPrestasiXls(){
-  const y=$('py').value,t=$('pt').value,s=$('ps').value,q=$('pq').value.toLowerCase();
-  const v=g('06_Prestasi').filter(r=>(!y||String(r.tahun||'2026')===y)&&(!t||r.tingkat===t)&&(!s||normStat(r.Status)===s)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
+  const y=$('py').value,t=$('pt').value,k=$('pk').value,j=$('pj').value,s=$('ps').value,q=$('pq').value.toLowerCase();
+  const v=g('06_Prestasi').filter(r=>(!y||String(r.tahun||'2026')===y)&&(!t||r.tingkat===t)&&(!k||normKab(r.Kabupaten)===k)&&(!j||String(r.Jenjang||'').trim().toUpperCase()===j)&&(!s||normStat(r.Status)===s)&&(!q||JSON.stringify(r).toLowerCase().includes(q)));
   const h=['No','Tahun','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kategori','Peraih','Peran','Lomba','Bidang','Tingkat','Peringkat','Penyelenggara','Lanjut','Bukti','Dokumentasi'];
   const aoa=[h].concat(v.map((r,i)=>[i+1,r.tahun||'2026',r.NPSN||'',r.Nama_Sekolah||'',r.Jenjang||'',r.Status||'',r.Kabupaten||'',r.kategori||'',r.nama_peraih||'',r.peran||'',r.lomba||'',r.bidang||'',r.tingkat||'',r.peringkat||'',r.penyelenggara||'',r.lanjut||'',r.bukti||'',r.dokumentasi||'']));
   saveSheetsXls([['Daftar_Prestasi',aoa]],'daftar_prestasi');

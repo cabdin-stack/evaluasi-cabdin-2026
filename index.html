@@ -546,28 +546,80 @@ function printRekap(d){
   rekap+=`<h4 style="background:#ddd;padding:3px 6px;margin:14px 0 4px">KERANGKA EVALUASI KINERJA</h4><table><tr><th>INPUT</th><th>PROSES</th><th>OUTPUT</th></tr><tr><td>Anggaran, SDM, sarpras, dan kebijakan (bagian 02, 03)</td><td>Pelaksanaan program dan pembelajaran (bagian 04, 05)</td><td>Prestasi, kompetensi, dan dampak lulusan (bagian 04, 06)</td></tr></table>
   <table><tr><th>2026: EVALUASI</th><th>2026: REFLEKSI</th><th>2027: AKSELERASI</th></tr><tr><td align="center">Apa yang sudah kita capai?</td><td align="center">Apa yang harus kita perbaiki?</td><td align="center">Apa yang harus kita hasilkan?</td></tr></table>
   <p align="center"><b>SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</b></p>`;
+  const now=new Date(),tglJam=now.toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const verCode=`${String(s.npsn).trim()}-${now.toISOString().slice(0,10).replace(/-/g,'')}`;
+  const filledCnt=NAMES.filter(([k])=>filled(k)).length;
+  const totSiswa=n26('01_Profil','siswa_L')+n26('01_Profil','siswa_P');
+  const totGuru=n26('01_Profil','guru_pns')+n26('01_Profil','guru_pppk')+n26('01_Profil','guru_gty');
+  const totTendik=n26('01_Profil','tendik_pns')+n26('01_Profil','tendik_non');
   const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Bukti Pengisian - ${esc(s.nama)}</title>
-<style>body{font-family:'Times New Roman',serif;font-size:12pt;margin:24px 40px;color:#000}
-h2,h3{text-align:center;margin:2px}h3{font-size:12pt;font-weight:normal}hr{border:1.5px solid #000}
-table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:10.5pt}td,th{border:1px solid #000;padding:3px 6px;vertical-align:top}th{background:#eee}
-.k td{border:0;padding:1px 4px}.sig{display:flex;justify-content:space-between;margin-top:26px;page-break-inside:avoid}.sig div{width:45%;text-align:center}
-@media print{.np{display:none}}</style></head><body>
-<h2>CABANG DINAS PENDIDIKAN WILAYAH JEMBER</h2><h3>Kabupaten Jember – Kabupaten Lumajang</h3><hr>
-<h2>BUKTI PENGISIAN DATA</h2><h3><b>Evaluasi Kinerja Pendidikan SMA, SMK, dan SLB Tahun 2026</b></h3><br>
-<table class="k"><tr><td width="28%">Nama Sekolah</td><td>: ${esc(s.nama)}</td></tr><tr><td>NPSN</td><td>: ${esc(s.npsn)}</td></tr>
-<tr><td>Jenjang / Status</td><td>: ${esc(s.jenjang)} / ${esc(s.status)}</td></tr><tr><td>Kabupaten / Kecamatan</td><td>: ${esc(s.kabupaten)} / ${esc(s.kecamatan||'-')}</td></tr>
-<tr><td>Pengisi Data</td><td>: ${esc(s.pengisi)} (${esc(s.kontak)})</td></tr><tr><td>Tanggal Cetak</td><td>: ${tgl}</td></tr></table>
-<b>A. Status Pengisian</b><table><tr><th>Bagian</th><th width="90">Status</th></tr>${NAMES.map(([k,t])=>`<tr><td>${t}</td><td align="center">${filled(k)?'✔ Terisi':'– Belum'}</td></tr>`).join('')}</table>
-<b>B. Ringkasan Data (2026)</b><table>
-<tr><td>Jumlah siswa (L+P)</td><td>${n26('01_Profil','siswa_L')+n26('01_Profil','siswa_P')}</td><td>Jumlah rombel</td><td>${n26('01_Profil','rombel')}</td></tr>
-<tr><td>Guru (PNS+PPPK+Yayasan/GTT)</td><td>${n26('01_Profil','guru_pns')+n26('01_Profil','guru_pppk')+n26('01_Profil','guru_gty')}</td><td>Tendik</td><td>${n26('01_Profil','tendik_pns')+n26('01_Profil','tendik_non')}</td></tr>
-<tr><td>Peserta / rerata TKA</td><td>${n26('04_Mutu','peserta_tka')} / ${n26('04_Mutu','rerata_tka')}</td><td>Kelulusan (%)</td><td>${n26('04_Mutu','lulus_persen')}</td></tr>
-<tr><td>Jumlah prestasi dilaporkan</td><td>${pr.length}</td><td>Total realisasi anggaran</td><td>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</td></tr></table>
+<style>
+@page{size:A4;margin:13mm 14mm 15mm 14mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:9.5pt;margin:0;padding:20px 26px;color:#1e293b;background:#f1f5f9;line-height:1.45}
+.page{max-width:860px;margin:auto;background:#fff;padding:26px 30px;border-radius:14px;box-shadow:0 4px 24px rgba(15,23,42,.08)}
+.np{position:sticky;top:10px;z-index:9;display:flex;justify-content:flex-end;margin-bottom:12px}
+.np button{background:#1d4ed8;color:#fff;border:0;padding:9px 18px;border-radius:8px;font:600 9.5pt inherit;cursor:pointer;box-shadow:0 2px 8px rgba(29,78,216,.3)}
+.kop{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px;border-bottom:3px double #1e3a8a;margin-bottom:14px}
+.kop h2{margin:0;font-size:13pt;color:#0f172a;letter-spacing:.3px}
+.kop .subkop{font-size:9pt;color:#475569;margin-top:2px}
+.kop .doc{margin-top:8px;display:inline-block;background:#1e3a8a;color:#fff;padding:3px 10px;border-radius:6px;font-size:8.5pt;font-weight:700;letter-spacing:.4px}
+.vcode{background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid ${filledCnt===9?'#16a34a':'#f59e0b'};border-radius:8px;padding:7px 10px;font-size:7.8pt;min-width:190px;text-align:right}
+.vcode b{display:block;font-size:8.6pt;color:#0f172a}
+.idbox{background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1d4ed8;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:5px 18px;font-size:9pt}
+.idbox div span{color:#64748b;display:inline-block;width:118px;font-size:8.3pt}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
+.kpis>div{background:#f8fafc;border:1px solid #e2e8f0;border-top:3px solid #1d4ed8;border-radius:10px;padding:9px;text-align:center}
+.kpis b{display:block;font-size:12.5pt;color:#0f172a}.kpis span{font-size:7.4pt;color:#64748b;font-weight:600;text-transform:uppercase}
+h2,h3{text-align:center;margin:2px}h4{background:#eef2ff !important;color:#1e3a8a;border-left:4px solid #1d4ed8;padding:5px 9px !important;border-radius:4px;font-size:9.5pt;page-break-after:avoid}
+table{border-collapse:collapse;width:100%;margin:5px 0 12px;font-size:8.8pt}
+td,th{border:1px solid #e2e8f0;padding:5px 7px;vertical-align:top}
+th{background:#f1f5f9;color:#0f172a;font-weight:700;text-align:left}
+tbody tr:nth-child(even){background:#fafcff}
+tr,.sig,.kpis>div{break-inside:avoid;page-break-inside:avoid}
+.okp{display:inline-block;background:#dcfce7;color:#15803d;padding:1px 8px;border-radius:99px;font-size:8pt;font-weight:700}
+.nop{display:inline-block;background:#f1f5f9;color:#64748b;padding:1px 8px;border-radius:99px;font-size:8pt}
+.sig{display:flex;justify-content:space-between;margin-top:24px;padding-top:10px;border-top:1px dashed #cbd5e1}.sig div{width:45%;text-align:center;font-size:9.2pt}
+.foot{margin-top:14px;display:flex;justify-content:space-between;font-size:7.5pt;color:#64748b;border-top:1px solid #e2e8f0;padding-top:6px}
+@media print{body{background:#fff;padding:0}.page{box-shadow:none;padding:0;max-width:none;border-radius:0}.np{display:none}}
+</style></head><body><div class="page">
+<div class="np"><button onclick="print()">🖨 Cetak / Simpan PDF</button></div>
+<div class="kop">
+  <div>
+    <h2>CABANG DINAS PENDIDIKAN WILAYAH JEMBER</h2>
+    <div class="subkop">Kabupaten Jember – Kabupaten Lumajang · Evaluasi Kinerja Pendidikan SMA, SMK, dan SLB 2026</div>
+    <div class="doc">BUKTI PENGISIAN DATA SEKOLAH</div>
+  </div>
+  <div class="vcode">
+    <b>KODE: ${esc(verCode)}</b>
+    Kelengkapan: <b>${filledCnt} / 9 Bagian</b><br>
+    Cetak: ${tglJam}
+  </div>
+</div>
+<div class="idbox">
+  <div><span>Nama Sekolah</span><b>: ${esc(s.nama)}</b></div>
+  <div><span>NPSN</span><b>: ${esc(s.npsn)}</b></div>
+  <div><span>Jenjang / Status</span>: ${esc(s.jenjang)} / ${esc(s.status)}</div>
+  <div><span>Kab. / Kec.</span>: ${esc(s.kabupaten)} / ${esc(s.kecamatan||'-')}</div>
+  <div><span>Kepala Sekolah</span>: ${esc(s.kepsek||'-')}</div>
+  <div><span>Pengisi Data</span>: ${esc(s.pengisi)} (${esc(s.kontak)})</div>
+</div>
+<div class="kpis">
+  <div><b>${totSiswa.toLocaleString('id-ID')}</b><span>Siswa 2026 (${n26('01_Profil','rombel')} Rombel)</span></div>
+  <div><b>${totGuru} / ${totTendik}</b><span>Guru / Tendik 2026</span></div>
+  <div><b>${tp?(tr/tp*100).toFixed(1)+'%':'-'}</b><span>Realisasi (s.d. Okt)</span></div>
+  <div><b>${pr.length}</b><span>Prestasi Dilaporkan</span></div>
+</div>
+<b>A. Status Pengisian Bagian (01–09)</b>
+<table><tr><th>Bagian Evaluasi</th><th width="110" style="text-align:center">Status</th></tr>${NAMES.map(([k,t])=>`<tr><td>${t}</td><td align="center">${filled(k)?'<span class="okp">✔ Terisi</span>':'<span class="nop">– Belum</span>'}</td></tr>`).join('')}</table>
+<b>B. Ringkasan Capaian Mutu &amp; Kelulusan (2026)</b>
+<table><tr><td>Peserta / Rerata Nilai TKA</td><td><b>${n26('04_Mutu','peserta_tka')}</b> / <b>${n26('04_Mutu','rerata_tka')}</b></td><td>Persentase Kelulusan (%)</td><td><b>${n26('04_Mutu','lulus_persen')}%</b></td></tr></table>
 ${rekap}
-<p style="text-align:justify">Dengan ini kami menyatakan bahwa data yang disampaikan melalui aplikasi Evaluasi Kinerja Pendidikan 2026 adalah benar dan dapat dipertanggungjawabkan, serta bukti sertifikat dan dokumentasi tersedia di sekolah.</p>
-<div class="sig"><div><br>Pengisi Data,<br><br><br><br><br><u>${esc(s.pengisi)}</u></div>
-<div>............................, ${tgl}<br>Kepala Sekolah,<br><br><br><br>(Stempel)<br><u><b>${esc(s.kepsek||'..............................')}</b></u><br>${s.nip?'NIP. '+esc(s.nip):''}</div></div>
-<p class="np" style="text-align:center"><button onclick="print()" style="padding:8px 20px">Cetak / Simpan PDF</button></p>
+<p style="text-align:justify;font-size:9pt;margin-top:14px">Dengan ini kami menyatakan bahwa data yang disampaikan melalui aplikasi Evaluasi Kinerja Pendidikan 2026 adalah benar dan dapat dipertanggungjawabkan, serta bukti sertifikat dan dokumentasi tersedia di sekolah.</p>
+<div class="sig"><div><br>Pengisi Data,<br><br><br><br><br><u><b>${esc(s.pengisi)}</b></u></div>
+<div>${esc(s.kabupaten||'............................')}, ${tgl}<br>Kepala Sekolah,<br><br><br><br>(Stempel)<br><u><b>${esc(s.kepsek||'..............................')}</b></u><br>${s.nip?'NIP. '+esc(s.nip):''}</div></div>
+<div class="foot"><span>SATU CABDIN, SATU KOMITMEN, SATU TUJUAN</span><span>Verifikasi: ${esc(verCode)} · ${tglJam}</span></div>
+</div>
 <script>setTimeout(()=>print(),400)<\/script></body></html>`;
   const w=window.open('','_blank');
   if(!w){toast('Pop-up diblokir browser. Izinkan pop-up untuk situs ini.',false);return}

@@ -192,7 +192,7 @@ const SECTIONS = [
   T('platform','Platform digital digunakan (LMS, Rumah Pendidikan, dll.)'),N('perangkat','Jumlah perangkat digital (laptop/chromebook/IFP)'),
   A('inovasi_digital','Praktik digitalisasi & pemanfaatan AI')]},
  {h:'TKA, Asesmen, Kelulusan',f:[
-  N('peserta_tka','Peserta TKA'),N('rerata_tka','Rerata Nilai TKA'),T('tka_mapel','Rerata per mapel (jika ada)'),
+  N('peserta_tka','Peserta TKA'),N('rerata_tka','Rerata Nilai TKA (0–100)',{max:100}),T('tka_mapel','Rerata per mapel (jika ada)'),
   N('lulus_n','Jumlah Peserta Ujian Akhir'),N('lulus_persen','Persentase Kelulusan (%)',{max:100}),
   A('hasil_belajar','Analisis hasil belajar / asesmen')]},
  {h:'Literasi, Numerasi, Karakter, Budaya Sekolah',f:[
@@ -239,7 +239,7 @@ const SECTIONS = [
   N('t_prestasi_juara','Target jumlah juara tingkat Kabupaten'),N('t_prestasi_prov','Target peserta lolos Provinsi'),
   N('t_prestasi_nas','Target peserta tingkat Nasional'),N('t_prestasi_int','Target prestasi Internasional'),
   A('t_prestasi','Strategi peningkatan prestasi siswa & GTK'),
-  N('t_tka','Target rerata TKA 2027'),N('t_lulus','Target persentase keterserapan lulusan (%)',{max:100}),
+  N('t_tka','Target rerata TKA 2027 (0–100)',{max:100}),N('t_lulus','Target persentase keterserapan lulusan (%)',{max:100}),
   A('t_kompetensi','Penguatan kompetensi lulusan'),
   A('t_sarpras','Pemerataan sarana & kualitas layanan (usulan)'),
   A('t_tatakelola','Penguatan tata kelola & akuntabilitas'),
@@ -255,17 +255,17 @@ const PRESTASI_FIELDS=[
   S('peringkat','Peringkat / Status',PERINGKAT,{req:1}),T('penyelenggara','Penyelenggara & tempat'),
   T('bukti','Link bukti sertifikat (Drive)',{req:1}),T('dokumentasi','Link dokumentasi/foto'),
   S('lanjut','Mengantarkan peserta ke tingkat berikutnya?',['Tidak','Ya – ke Provinsi','Ya – ke Nasional','Ya – ke Internasional'])];
-const INDIKATOR=[N('ikut','Jumlah yang mengikuti'),N('juara_kab','Juara tingkat Kabupaten'),N('lolos_prov','Lolos/Juara tingkat Provinsi'),
-  N('lolos_nas','Menembus Nasional'),N('juara_int','Prestasi Internasional')];
+const INDIKATOR=[N('ikut','Jumlah yang mengikuti',{int:1}),N('juara_kab','Juara tingkat Kabupaten',{int:1}),N('lolos_prov','Lolos/Juara tingkat Provinsi',{int:1}),
+  N('lolos_nas','Menembus Nasional',{int:1}),N('juara_int','Prestasi Internasional',{int:1})];
 
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild};
 function fieldHTML(f,pre='',nd=false){
-  const nm=pre+f.n,rq=f.req?' required':'',mx=f.max?` max="${f.max}"`:'';
+  const nm=pre+f.n,rq=f.req?' required':'',mx=f.max?` max="${f.max}"`:'',st=f.int?'1':'any';
   let c;
   if(f.t==='select')c=`<select name="${nm}"${rq}><option value="">-- pilih --</option>${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`;
-  else if(f.t==='number'&&!nd)return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label><div class="yr"><span>2025<input type="number" min="0"${mx} step="any" name="${nm}_2025"></span><span>2026<input type="number" min="0"${mx} step="any" name="${nm}_2026"></span></div></div>`;
+  else if(f.t==='number'&&!nd)return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label><div class="yr"><span>2025<input type="number" min="0"${mx} step="${st}" name="${nm}_2025"></span><span>2026<input type="number" min="0"${mx} step="${st}" name="${nm}_2026"></span></div></div>`;
   else if(f.t==='area')c=`<textarea name="${nm}"${rq}></textarea>`;
-  else c=`<input type="${f.t==='number'?'number':'text'}" ${f.t==='number'?`min="0"${mx} step="any"`:''} name="${nm}" placeholder="${f.ph||''}"${rq}>`;
+  else c=`<input type="${f.t==='number'?'number':'text'}" ${f.t==='number'?`min="0"${mx} step="${st}"`:''} name="${nm}" placeholder="${f.ph||''}"${rq}>`;
   return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label>${c}</div>`;
 }
 const pages=document.getElementById('pages'),nav=document.getElementById('nav');
@@ -810,6 +810,16 @@ function validateAllFields(onlyIds=null){
       });
     });
   }
+  // 5. Cek batas angka (max="100" untuk TKA/Kelulusan/Progres & bilangan bulat step="1" untuk indikator juara)
+  [...pages.children].forEach(sec=>{
+    if(!inc(sec.dataset.id))return;
+    sec.querySelectorAll('input[type=number]').forEach(x=>{
+      if(x.readOnly||x.value.trim()==='')return;
+      const v=Number(x.value);
+      if(x.max&&v>Number(x.max)){markFieldErr(x,`Nilai maksimal ${x.max}`);errs.push(x)}
+      else if(x.step==='1'&&!Number.isInteger(v)){markFieldErr(x,'Harus berupa bilangan bulat (tanpa koma)');errs.push(x)}
+    });
+  });
   return errs;
 }
 

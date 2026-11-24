@@ -30,6 +30,14 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 #login{max-width:360px;margin:80px auto;text-align:center}
 #login input{width:100%;margin:10px 0}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.ang-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:10px;margin:0 0 12px}
+.ang-k{background:#f8fafc;border:1px solid var(--b);border-top:3px solid #1d4ed8;border-radius:10px;padding:10px 12px;cursor:pointer;transition:.15s}
+.ang-k:hover{background:#eef3ff}.ang-k.on{border:2px solid #1d4ed8;background:#eff6ff;box-shadow:0 2px 8px rgba(29,78,216,.14)}
+.ang-k .ak-h{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#0f172a}
+.ang-k .ak-p{font-size:1.25rem;font-weight:800;margin:4px 0 3px}
+.ang-k .ak-bar{height:7px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin-bottom:5px}
+.ang-k .ak-bar>i{display:block;height:100%;border-radius:99px}
+.ang-k .ak-sub{font-size:.73rem;color:#475569;line-height:1.35}
 @media print{
   body{background:#fff}
   header .btn,.bar,#tabs{display:none}
@@ -101,9 +109,11 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <p style="font-size:.78rem">Tip: buat sheet <b>Master_Sekolah</b> (kolom: NPSN, Nama, Jenjang, Status, Kabupaten) berisi seluruh sekolah agar daftar "Belum mengisi" muncul.</p></div>
 
 <div class="card"><h2>Daftar Realisasi Anggaran 2025 &amp; 2026 per Sekolah (Per Bantuan)</h2>
-<p style="font-size:.8rem;margin:0 0 8px;color:#475569">Catatan: Realisasi anggaran tahun 2026 sementara sampai dengan bulan <b>Oktober 2026</b>.</p>
+<p style="font-size:.8rem;margin:0 0 8px;color:#475569">Catatan: Realisasi anggaran tahun 2026 sementara sampai dengan bulan <b>Oktober 2026</b>. Klik kartu indikator di bawah atau pilih filter untuk menyaring pagu penerimaan tertentu.</p>
+<div id="angKpi" class="ang-kpis"></div>
 <div class="bar">
 <input id="aq" placeholder="Cari nama/NPSN" oninput="renderAngSekolah()">
+<select id="ab" onchange="renderAngSekolah()"><option value="">Semua Pagu Penerimaan</option></select>
 <select id="ay" onchange="renderAngSekolah()"><option value="both">Tahun 2025 &amp; 2026</option><option value="2026">Tahun 2026 saja</option><option value="2025">Tahun 2025 saja</option></select>
 <select id="ak" onchange="renderAngSekolah()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
 <select id="aj" onchange="renderAngSekolah()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
@@ -313,39 +323,72 @@ function buildAngPivot(){
   return {cols,list};
 }
 let angView=[],angCols=[];
+function pickAngBantuan(name){
+  const sel=$('ab');
+  sel.value=(sel.value===name?'':name);
+  renderAngSekolah();
+}
 function renderAngSekolah(){
-  const {cols,list}=buildAngPivot();angCols=cols;
-  const q=$('aq').value.toLowerCase(),ay=$('ay').value,ak=$('ak').value,aj=$('aj').value,as=$('as').value;
-  angView=list.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!ak||r.kab===ak)&&(!aj||r.jenjang===aj)&&(!as||r.status===as));
-  $('acnt').textContent=angView.length+' sekolah';
+  const {cols,list}=buildAngPivot();
+  const selB=$('ab'),curB=selB.value;
+  selB.innerHTML='<option value="">Semua Pagu Penerimaan</option>'+cols.map(c=>`<option value="${esc(c)}"${c===curB?' selected':''}>${esc(c)}</option>`).join('');
+  const ab=selB.value,q=$('aq').value.toLowerCase(),ay=$('ay').value,ak=$('ak').value,aj=$('aj').value,as=$('as').value;
+  const baseList=list.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!ak||r.kab===ak)&&(!aj||r.jenjang===aj)&&(!as||r.status===as));
   const rpf=v=>v?'Rp '+Math.round(v).toLocaleString('id-ID'):'-';
   const show25=ay==='both'||ay==='2025',show26=ay==='both'||ay==='2026';
+
+  // Indikator ringkasan per jenis pagu penerimaan / bantuan
+  const kYr=ay==='2025'?'25':'26';
+  $('angKpi').innerHTML=cols.map(c=>{
+    let tp=0,tr=0,nSch=0,anom=0;
+    baseList.forEach(r=>{
+      const b=r.by[c];if(!b)return;
+      const p=kYr==='25'?b.p25:b.p26,rl=kYr==='25'?b.r25:b.r26,ov=kYr==='25'?b.over25:b.over26;
+      if(p||rl){nSch++;if(ov)anom++;else{tp+=p;tr+=rl}}
+    });
+    const pct=tp?(tr/tp*100):0,col=pct>=80?'#16a34a':(pct>=50?'#d97706':'#dc2626');
+    const lblYr=kYr==='25'?'2025':'2026 s.d. Okt';
+    return `<div class="ang-k${ab===c?' on':''}" onclick="pickAngBantuan('${esc(c).replace(/'/g,"\\'")}')">
+      <div class="ak-h"><span>${esc(c)}</span><span style="font-size:.72rem;color:#64748b;font-weight:600">${nSch} sklh</span></div>
+      <div class="ak-p" style="color:${tp?col:'#64748b'}">${tp?pct.toFixed(1)+'%':'-'}</div>
+      <div class="ak-bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>
+      <div class="ak-sub">Pagu ${lblYr}: <b>${rpf(tp)}</b><br>Real: <b>${rpf(tr)}</b>${anom?` · <span style="color:#b91c1c">${anom} anomali</span>`:''}</div>
+    </div>`;
+  }).join('');
+
+  const viewCols=ab?[ab]:cols;
+  angCols=viewCols;
+  angView=ab?baseList.filter(r=>{const b=r.by[ab];return b&&((show25&&(b.p25||b.r25))||(show26&&(b.p26||b.r26)))}):baseList;
+  $('acnt').textContent=angView.length+' sekolah'+(ab?' ('+ab+')':'');
   const span=(show25?3:0)+(show26?3:0);
   const cell=(p,rl,over)=>`<td style="text-align:right;white-space:nowrap">${rpf(p)}</td><td style="text-align:right;white-space:nowrap;${over?'color:#b91c1c;font-weight:700':''}">${rpf(rl)}</td><td style="text-align:center;white-space:nowrap;${over?'color:#b91c1c;font-weight:700':''}">${over?(p?(rl/p*100).toFixed(1)+'% ⚠':'Pagu 0 ⚠'):(p?(rl/p*100).toFixed(1)+'%':'-')}</td>`;
   const h1=`<tr><th rowspan="2">No</th><th rowspan="2">NPSN</th><th rowspan="2">Sekolah</th><th rowspan="2">Jenjang</th><th rowspan="2">Status</th><th rowspan="2">Kabupaten</th>`+
-    cols.map(c=>`<th colspan="${span}" style="text-align:center;border-left:2px solid #93c5fd">${esc(c)}</th>`).join('')+
-    `<th colspan="${span}" style="text-align:center;border-left:2px solid #1d4ed8;background:#dbeafe">TOTAL SEKOLAH</th></tr>`;
+    viewCols.map(c=>`<th colspan="${span}" style="text-align:center;border-left:2px solid #93c5fd">${esc(c)}</th>`).join('')+
+    (ab?'':`<th colspan="${span}" style="text-align:center;border-left:2px solid #1d4ed8;background:#dbeafe">TOTAL SEKOLAH</th>`)+`</tr>`;
   const subH=(show25?'<th>Pagu 25</th><th>Real 25</th><th>% 25</th>':'')+(show26?'<th>Pagu 26</th><th>Real 26 (s.d. Okt)</th><th>% 26</th>':'');
-  const h2=`<tr>${cols.map(()=>subH).join('')}${subH}</tr>`;
-  const totCol={};cols.forEach(c=>totCol[c]={p25:0,r25:0,p26:0,r26:0});
+  const h2=`<tr>${viewCols.map(()=>subH).join('')}${ab?'':subH}</tr>`;
+  const totCol={};viewCols.forEach(c=>totCol[c]={p25:0,r25:0,p26:0,r26:0});
   const totAll={p25:0,r25:0,p26:0,r26:0};
   const body=angView.map((r,i)=>{
     let tds=`<td>${i+1}</td><td>${esc(r.npsn)}</td><td style="white-space:nowrap">${esc(r.nama)}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td>`;
-    cols.forEach(c=>{
+    viewCols.forEach(c=>{
       const b=r.by[c]||{p25:0,r25:0,over25:false,p26:0,r26:0,over26:false};
       if(!b.over25){totCol[c].p25+=b.p25;totCol[c].r25+=b.r25}
       if(!b.over26){totCol[c].p26+=b.p26;totCol[c].r26+=b.r26}
       tds+=(show25?cell(b.p25,b.r25,b.over25):'')+(show26?cell(b.p26,b.r26,b.over26):'');
     });
-    if(!r.t25.over){totAll.p25+=r.t25.p;totAll.r25+=r.t25.r}
-    if(!r.t26.over){totAll.p26+=r.t26.p;totAll.r26+=r.t26.r}
-    tds+=(show25?cell(r.t25.p,r.t25.r,r.t25.over):'')+(show26?cell(r.t26.p,r.t26.r,r.t26.over):'');
+    if(!ab){
+      if(!r.t25.over){totAll.p25+=r.t25.p;totAll.r25+=r.t25.r}
+      if(!r.t26.over){totAll.p26+=r.t26.p;totAll.r26+=r.t26.r}
+      tds+=(show25?cell(r.t25.p,r.t25.r,r.t25.over):'')+(show26?cell(r.t26.p,r.t26.r,r.t26.over):'');
+    }
     return `<tr>${tds}</tr>`;
   }).join('');
   const totRow=angView.length?`<tr style="background:#eef3ff;font-weight:700"><td colspan="6">TOTAL (hanya valid ≤100%)</td>`+
-    cols.map(c=>(show25?cell(totCol[c].p25,totCol[c].r25,false):'')+(show26?cell(totCol[c].p26,totCol[c].r26,false):'')).join('')+
-    (show25?cell(totAll.p25,totAll.r25,false):'')+(show26?cell(totAll.p26,totAll.r26,false):'')+`</tr>`:'';
-  $('tangSch').innerHTML=h1+h2+(body?body+totRow:`<tr><td colspan="${6+(cols.length+1)*span}" style="color:#888">Belum ada data anggaran sekolah</td></tr>`);
+    viewCols.map(c=>(show25?cell(totCol[c].p25,totCol[c].r25,false):'')+(show26?cell(totCol[c].p26,totCol[c].r26,false):'')).join('')+
+    (ab?'':((show25?cell(totAll.p25,totAll.r25,false):'')+(show26?cell(totAll.p26,totAll.r26,false):'')))+`</tr>`:'';
+  const totalColsCount=6+(viewCols.length+(ab?0:1))*span;
+  $('tangSch').innerHTML=h1+h2+(body?body+totRow:`<tr><td colspan="${totalColsCount}" style="color:#888">Belum ada data anggaran sekolah</td></tr>`);
 }
 function angPivotAoa(list,cols,ay='both'){
   const show25=ay==='both'||ay==='2025',show26=ay==='both'||ay==='2026';

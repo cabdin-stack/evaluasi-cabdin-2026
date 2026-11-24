@@ -299,8 +299,10 @@ SECTIONS.forEach((s,i)=>{
     s.groups.forEach(g=>{h+=(g.h?`<h3>${g.h}</h3>`:'')+`<div class="grid">${g.f.map(f=>fieldHTML(f,'',singleNum)).join('')}</div>`});
   }
   const last=i===SECTIONS.length-1;
-  h+=`<div class="bar"><button type="button" class="btn sec" ${i?'':'disabled'} onclick="go(${i-1})">← Sebelumnya</button>`+
-     (last?`<button type="button" class="btn" id="submit" onclick="submitAll()">Kirim Semua Data</button>`:`<button type="button" class="btn" onclick="go(${i+1})">Berikutnya →</button>`)+`</div>`;
+  const saveBtn=i?`<button type="button" class="btn" style="background:#15803d" id="saveSec_${i}" onclick="saveSection(${i})">💾 Simpan Bagian Ini</button>`:'';
+  h+=`<div class="bar" style="flex-wrap:wrap"><button type="button" class="btn sec" ${i?'':'disabled'} onclick="go(${i-1})">← Sebelumnya</button>`+
+     `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">${saveBtn}`+
+     (last?`<button type="button" class="btn" id="submit" onclick="submitAll()">Kirim Semua Data</button>`:`<button type="button" class="btn" onclick="go(${i+1})">Berikutnya →</button>`)+`</div></div>`;
   p.innerHTML=h;pages.appendChild(p);
   const b=document.createElement('button');b.type='button';b.textContent=s.title.replace(/^(\d+)\.\s*/,'$1 ').split(' ').slice(0,3).join(' ');b.onclick=()=>go(i);nav.appendChild(b);
 });
@@ -571,7 +573,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:9.5pt;m
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px}
 .kpis>div{background:#f8fafc;border:1px solid #e2e8f0;border-top:3px solid #1d4ed8;border-radius:10px;padding:9px;text-align:center}
 .kpis b{display:block;font-size:12.5pt;color:#0f172a}.kpis span{font-size:7.4pt;color:#64748b;font-weight:600;text-transform:uppercase}
-h2,h3{text-align:center;margin:2px}h4{background:#eef2ff !important;color:#1e3a8a;border-left:4px solid #1d4ed8;padding:5px 9px !important;border-radius:4px;font-size:9.5pt;page-break-after:avoid}
+h2,h3{text-align:center;margin:2px}h4{background:#eef2ff !important;color:#1e3a8a;border-left:4px solid #1d4ed8;padding:6px 10px !important;border-radius:5px;font-size:12pt;font-weight:700;margin:18px 0 6px !important;page-break-after:avoid}
+.page > b{display:block;font-size:10.8pt;color:#1e3a8a;margin:10px 0 4px;page-break-after:avoid}
 table{border-collapse:collapse;width:100%;margin:5px 0 12px;font-size:8.8pt}
 td,th{border:1px solid #e2e8f0;padding:5px 7px;vertical-align:top}
 th{background:#f1f5f9;color:#0f172a;font-weight:700;text-align:left}
@@ -761,46 +764,110 @@ function clearAllErrs(){
 document.addEventListener('input',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('err-field')&&e.target.value.trim()!=='')clearFieldErr(e.target)});
 document.addEventListener('change',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('err-field')&&e.target.value.trim()!=='')clearFieldErr(e.target)});
 
-function validateAllFields(){
+function validateAllFields(onlyIds=null){
   clearAllErrs();
   const errs=[];
+  const inc=id=>!onlyIds||onlyIds.includes(id);
   const req=(sec,name,msg='Isian ini harus diisi')=>{
     const x=sec&&sec.querySelector(`[name="${name}"]`);
     if(x&&!x.readOnly&&x.value.trim()===''){markFieldErr(x,msg);errs.push(x)}
   };
   const pg={};[...pages.children].forEach(p=>pg[p.dataset.id]=p);
-  // 1. Cek indikator inti di setiap bagian
+  // 1. Cek indikator inti di setiap bagian yang diminta
   Object.entries(REQUIRED_CORE).forEach(([id,fields])=>{
+    if(!inc(id))return;
     const sec=pg[id];if(!sec)return;
     fields.forEach(f=>req(sec,f));
   });
   // 2. Cek kondisional (wajib hanya jika relevan)
   const valOf=(id,name)=>((pg[id]&&pg[id].querySelector(`[name="${name}"]`))||{}).value||'';
-  if(/^Ada/i.test(valOf('02_Anggaran','temuan')))req(pg['02_Anggaran'],'temuan_uraian','Wajib diisi karena ada temuan audit');
-  if(valOf('03_Sarpras_SDM','revit_status')==='Ya'){
+  if(inc('02_Anggaran')&&/^Ada/i.test(valOf('02_Anggaran','temuan')))req(pg['02_Anggaran'],'temuan_uraian','Wajib diisi karena ada temuan audit');
+  if(inc('03_Sarpras_SDM')&&valOf('03_Sarpras_SDM','revit_status')==='Ya'){
     req(pg['03_Sarpras_SDM'],'revit_item','Wajib diisi bagi penerima revitalisasi');
     req(pg['03_Sarpras_SDM'],'revit_progres_2026','Wajib diisi bagi penerima revitalisasi');
   }
-  if(valOf('05_Program','sakti')==='Ada')req(pg['05_Program'],'sakti_ket','Wajib diisi jika SAKTI Ada');
-  if(valOf('05_Program','tefa')==='Ada')req(pg['05_Program'],'tefa_ket','Wajib diisi jika TEFA Ada');
+  if(inc('05_Program')&&valOf('05_Program','sakti')==='Ada')req(pg['05_Program'],'sakti_ket','Wajib diisi jika SAKTI Ada');
+  if(inc('05_Program')&&valOf('05_Program','tefa')==='Ada')req(pg['05_Program'],'tefa_ket','Wajib diisi jika TEFA Ada');
   // 3. Cek Anggaran: BOS dan BPOPP wajib diisi (Pagu & Realisasi 2026)
-  document.querySelectorAll('#angRows .row').forEach(r=>{
-    const sm=(r.querySelector('[name=sumber]').value||'').trim();
-    if(sm==='BOS'||sm==='BPOPP'){
-      const p=r.querySelector('[name=pagu]'),rl=r.querySelector('[name=realisasi]');
-      if(p.value.trim()===''){markFieldErr(p,`Pagu ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(p)}
-      if(rl.value.trim()===''){markFieldErr(rl,`Realisasi ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(rl)}
-    }
-  });
-  // 4. Cek baris dinamis Prestasi/Indikator hanya jika baris tersebut mulai diisi
-  document.querySelectorAll('#prestasiRows .row, #indRows .row').forEach(row=>{
-    const inputs=[...row.querySelectorAll('[name]')];
-    if(!inputs.some(x=>!x.readOnly&&x.value.trim()!==''))return;
-    row.querySelectorAll('[required]').forEach(x=>{
-      if(x.value.trim()===''){markFieldErr(x,'Isian ini harus diisi');errs.push(x)}
+  if(inc('02_Anggaran')){
+    document.querySelectorAll('#angRows .row').forEach(r=>{
+      const sm=(r.querySelector('[name=sumber]').value||'').trim();
+      if(sm==='BOS'||sm==='BPOPP'){
+        const p=r.querySelector('[name=pagu]'),rl=r.querySelector('[name=realisasi]');
+        if(p.value.trim()===''){markFieldErr(p,`Pagu ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(p)}
+        if(rl.value.trim()===''){markFieldErr(rl,`Realisasi ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(rl)}
+      }
     });
-  });
+  }
+  // 4. Cek baris dinamis Prestasi/Indikator hanya jika baris tersebut mulai diisi
+  if(inc('06_Prestasi')){
+    document.querySelectorAll('#prestasiRows .row, #indRows .row').forEach(row=>{
+      const inputs=[...row.querySelectorAll('[name]')];
+      if(!inputs.some(x=>!x.readOnly&&x.value.trim()!==''))return;
+      row.querySelectorAll('[required]').forEach(x=>{
+        if(x.value.trim()===''){markFieldErr(x,'Isian ini harus diisi');errs.push(x)}
+      });
+    });
+  }
   return errs;
+}
+
+function checkAnggaranValid(){
+  for(const r of document.querySelectorAll('#angRows .row')){
+    const sm=r.querySelector('[name=sumber]').value||'Sumber Dana';
+    for(const [yr,pk,rk] of [['2025','pagu_2025','realisasi_2025'],['2026','pagu','realisasi']]){
+      const p=+r.querySelector(`[name=${pk}]`).value||0,rl=+r.querySelector(`[name=${rk}]`).value||0;
+      if(rl>p){
+        const elR=r.querySelector(`[name=${rk}]`),i=+r.closest('section').dataset.i;
+        markFieldErr(elR,'Realisasi melebihi Pagu');go(i,true);
+        setTimeout(()=>{elR.focus();elR.scrollIntoView({behavior:'smooth',block:'center'})},120);
+        toast(`Realisasi ${yr} "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function saveSection(idx){
+  const idPage=pages.children[0],p=pages.children[idx],secDef=SECTIONS[idx];
+  if(!p||!secDef)return;
+  const curNpsn=idPage.querySelector('[name=npsn]').value.trim();
+  if(sampleMode){toast('Mode data contoh tidak dapat disimpan. Klik "Kosongkan Semua" lalu verifikasi NPSN asli.',false);go(0);return}
+  if(!verifiedNpsn||verifiedNpsn!==curNpsn){toast('NPSN belum diverifikasi terhadap Master_Sekolah. Klik "Verifikasi NPSN & Muat Data" di halaman Identitas.',false);go(0);return}
+  const secId=p.dataset.id;
+  const errs=validateAllFields(['identitas',secId]);
+  if(errs.length){
+    const first=errs[0],sec=first.closest('section'),goIdx=sec?+sec.dataset.i:idx;
+    go(goIdx,true);
+    setTimeout(()=>{first.focus();first.scrollIntoView({behavior:'smooth',block:'center'})},120);
+    toast(`Masih ada ${errs.length} kolom wajib kosong di bagian ini / Identitas (ditandai merah). Isian ini harus diisi.`,false);
+    return;
+  }
+  if(secId==='02_Anggaran'&&!checkAnggaranValid())return;
+  if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi di index.html',false);return}
+  const full=build(),partSecs={},clearSecs=[];
+  if(secId==='06_Prestasi'){
+    clearSecs.push('06_Prestasi','06_Indikator_Prestasi');
+    if(full.sections['06_Prestasi'])partSecs['06_Prestasi']=full.sections['06_Prestasi'];
+    if(full.sections['06_Indikator_Prestasi'])partSecs['06_Indikator_Prestasi']=full.sections['06_Indikator_Prestasi'];
+  } else if(secId==='02_Anggaran'){
+    clearSecs.push('02_Anggaran','02_Anggaran_Rinci');
+    if(full.sections['02_Anggaran'])partSecs['02_Anggaran']=full.sections['02_Anggaran'];
+    if(full.sections['02_Anggaran_Rinci'])partSecs['02_Anggaran_Rinci']=full.sections['02_Anggaran_Rinci'];
+  } else {
+    clearSecs.push(secId);
+    if(full.sections[secId])partSecs[secId]=full.sections[secId];
+  }
+  const btn=document.getElementById('saveSec_'+idx);
+  const oldTxt=btn.textContent;btn.disabled=true;btn.textContent='Menyimpan...';
+  try{
+    const st=await sendPayload({partial:true,clearSections:clearSecs,sekolah:full.sekolah,sections:partSecs},btn);
+    done.add(idx);if(nav.children[idx])nav.children[idx].classList.add('done');
+    lastSent=full;localStorage.setItem('cabdin2026_last',JSON.stringify(lastSent));save();
+    toast(st==='ok'?`✔ Bagian "${secDef.title}" berhasil disimpan! Bagian lain tetap aman.`:`Bagian "${secDef.title}" terkirim (balasan server tidak terbaca). Cek dengan "Verifikasi NPSN & Muat Data".`,true);
+  }catch(e){toast('Gagal menyimpan bagian: '+(e.message||e),false)}
+  btn.disabled=false;btn.textContent=oldTxt;
 }
 
 async function submitAll(){
@@ -816,38 +883,25 @@ async function submitAll(){
     toast(`Isian belum lengkap! Masih ada ${errs.length} kolom kosong (ditandai merah). Isian ini harus diisi (isi 0 atau "-" bila tidak ada).`,false);
     return;
   }
-  // Cek anggaran 2025 & 2026: realisasi tidak boleh melebihi pagu
-  for(const r of document.querySelectorAll('#angRows .row')){
-    const sm=r.querySelector('[name=sumber]').value||'Sumber Dana';
-    for(const [yr,pk,rk] of [['2025','pagu_2025','realisasi_2025'],['2026','pagu','realisasi']]){
-      const p=+r.querySelector(`[name=${pk}]`).value||0,rl=+r.querySelector(`[name=${rk}]`).value||0;
-      if(rl>p){
-        const elR=r.querySelector(`[name=${rk}]`),i=+r.closest('section').dataset.i;
-        markFieldErr(elR,'Realisasi melebihi Pagu');go(i,true);
-        setTimeout(()=>{elR.focus();elR.scrollIntoView({behavior:'smooth',block:'center'})},120);
-        toast(`Realisasi ${yr} "${sm}" melebihi Pagu (${rp(rl)} > ${rp(p)}). Periksa kembali angka nol / jangan terbalik.`,false);
-        return;
-      }
-    }
-  }
+  if(!checkAnggaranValid())return;
   if(SCRIPT_URL.startsWith('GANTI')){toast('SCRIPT_URL belum diisi di index.html',false);return}
   if(/CONTOH/i.test(idPage.querySelector('[name=nama]').value)&&!confirm('Nama sekolah berisi "CONTOH" – tampaknya ini data contoh, bukan data asli. Tetap kirim?'))return;
   if(!confirm('Kirim semua data sekarang? Jika NPSN ini pernah mengirim, data lama akan DITIMPA (revisi).'))return;
   const btn=document.getElementById('submit');btn.disabled=true;btn.textContent='Mengirim...';
   try{
     const payload=build();
-    const st=await sendPayload(payload);
+    const st=await sendPayload(payload,btn);
     localStorage.removeItem('cabdin2026');
     lastSent=payload;localStorage.setItem('cabdin2026_last',JSON.stringify(lastSent));
     toast(st==='ok'?'Data berhasil disimpan. Terima kasih!':'Data terkirim (balasan server tidak terbaca). Pastikan dengan klik "Verifikasi NPSN & Muat Data".',true);
     setTimeout(()=>{if(confirm('Data terkirim. Cetak Bukti Pengisian untuk ditandatangani Kepala Sekolah sekarang?'))printRekap(lastSent)},400);
     resetFormFields();verifiedNpsn='';sampleMode=false;setNpsnStatus(false,'');go(0,true);
-  }catch(e){toast('Gagal mengirim: '+e.message||e,false)}
+  }catch(e){toast('Gagal mengirim: '+(e.message||e),false)}
   btn.disabled=false;btn.textContent='Kirim Semua Data';
 }
 // kirim dengan konfirmasi dari server + otomatis coba lagi bila server sibuk
-async function sendPayload(p){
-  const body=JSON.stringify(p),H={'Content-Type':'text/plain;charset=utf-8'},btn=document.getElementById('submit');
+async function sendPayload(p,btnEl){
+  const body=JSON.stringify(p),H={'Content-Type':'text/plain;charset=utf-8'},btn=btnEl||document.getElementById('submit');
   for(let i=0;i<3;i++){
     try{
       const r=await (await fetch(SCRIPT_URL,{method:'POST',headers:H,body})).json();

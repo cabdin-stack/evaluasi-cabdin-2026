@@ -121,9 +121,9 @@ const _v25=(S,s,ks,k25)=>{
 const METRICS=[
  {k:'siswa',l:'Jumlah siswa',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['siswa_L','siswa_P'],'siswa'):_sumY(S,'01_Profil',['siswa_L','siswa_P'],'2026')},
  {k:'rombel',l:'Jumlah rombel',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['rombel'],'rombel'):_sumY(S,'01_Profil',['rombel'],'2026')},
- {k:'guru',l:'Jumlah guru',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_pns','guru_pppk','guru_gty'],'guru'):_sumY(S,'01_Profil',['guru_pns','guru_pppk','guru_gty'],'2026')},
+ {k:'guru',l:'Jumlah guru',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'guru'):_sumY(S,'01_Profil',['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2026')},
  {k:'guru_sert',l:'Guru bersertifikat pendidik',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_sertifikasi'],'guru_sert'):_sumY(S,'01_Profil',['guru_sertifikasi'],'2026')},
- {k:'tendik',l:'Tenaga kependidikan',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['tendik_pns','tendik_non'],'tendik'):_sumY(S,'01_Profil',['tendik_pns','tendik_non'],'2026')},
+ {k:'tendik',l:'Tenaga kependidikan',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'tendik'):_sumY(S,'01_Profil',['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'2026')},
  {k:'kelas_baik',l:'Ruang kelas kondisi baik',f:(S,yr)=>yr==='2025'?_v25(S,'03_Sarpras_SDM',['kelas_baik'],'kelas_baik'):_sumY(S,'03_Sarpras_SDM',['kelas_baik'],'2026')},
  {k:'kelas_rusak',l:'Ruang kelas rusak (ringan+sedang+berat)',good:-1,f:(S,yr)=>yr==='2025'?_v25(S,'03_Sarpras_SDM',['kelas_rr','kelas_rs','kelas_rb'],'kelas_rusak'):_sumY(S,'03_Sarpras_SDM',['kelas_rr','kelas_rs','kelas_rb'],'2026')},
  {k:'tka',l:'Rerata nilai TKA',avg:1,f:(S,yr)=>yr==='2025'?_v25(S,'04_Mutu',['rerata_tka'],'tka'):_sumY(S,'04_Mutu',['rerata_tka'],'2026')},
@@ -154,8 +154,8 @@ const SECTIONS = [
  {h:'Jumlah Siswa, Guru, dan Tenaga Kependidikan',f:[
   N('rombel','Jumlah Rombel'),N('siswa_L','Siswa Laki-laki'),N('siswa_P','Siswa Perempuan'),
   N('siswa_abk','Siswa Berkebutuhan Khusus / Inklusi'),N('siswa_kurangmampu','Siswa Kurang Mampu (KIP/PIP)'),
-  N('guru_pns','Guru PNS'),N('guru_pppk','Guru PPPK'),N('guru_gty','Guru Yayasan/GTT'),N('guru_sertifikasi','Guru Bersertifikat Pendidik'),
-  N('tendik_pns','Tendik PNS/PPPK'),N('tendik_non','Tendik Non-ASN')]},
+  N('guru_pns','Guru PNS'),N('guru_pppk','Guru PPPK Penuh Waktu'),N('guru_pppk_pw','Guru PPPK Paruh Waktu'),N('guru_gty','Guru Non-ASN (GTY/GTT)'),N('guru_sertifikasi','Guru Bersertifikat Pendidik'),
+  N('tendik_pns','Tendik PNS'),N('tendik_pppk','Tendik PPPK Penuh Waktu'),N('tendik_pppk_pw','Tendik PPPK Paruh Waktu'),N('tendik_non','Tendik Non-ASN')]},
  {h:'Sebaran dan Kondisi Satuan Pendidikan',f:[
   T('akreditasi','Akreditasi (A/B/C/Belum)'),T('listrik_internet','Listrik & Internet (daya / bandwidth)'),
   S('lokasi','Lokasi',['Perkotaan','Pedesaan','Terpencil/3T']),T('jarak','Jarak ke Cabdin (km)'),
@@ -304,7 +304,8 @@ SECTIONS.forEach((s,i)=>{
      `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">${saveBtn}`+
      (last?`<button type="button" class="btn" id="submit" onclick="submitAll()">Kirim Semua Data</button>`:`<button type="button" class="btn" onclick="go(${i+1})">Berikutnya →</button>`)+`</div></div>`;
   p.innerHTML=h;pages.appendChild(p);
-  const b=document.createElement('button');b.type='button';b.textContent=s.title.replace(/^(\d+)\.\s*/,'$1 ').split(' ').slice(0,3).join(' ');b.onclick=()=>go(i);nav.appendChild(b);
+  const NAV_LBL={identitas:'Identitas Sekolah','01_Profil':'01 Profil Sekolah','02_Anggaran':'02 Anggaran & Tata Kelola','03_Sarpras_SDM':'03 Sarpras & SDM','04_Mutu':'04 Mutu Pembelajaran','05_Program':'05 Program Unggulan','06_Prestasi':'06 Prestasi Siswa & GTK','07_Kemitraan':'07 Kemitraan & Kolaborasi','08_Evaluasi':'08 Evaluasi & Masalah','09_Proyeksi2027':'09 Proyeksi 2027'};
+  const b=document.createElement('button');b.type='button';b.textContent=NAV_LBL[s.id]||s.title;b.onclick=()=>go(i);nav.appendChild(b);
 });
 
 function addInd(){const d=el(`<div class="row"><div class="grid">${[S('tahun','Tahun',['2025','2026']),S('lomba_rekap','Lomba / Kompetisi',['OSN','O2SN','FLS3N','OPSI','LDBI','NSDC','TALENTA SISWA SMA','LKS DIKMEN','FIKSI','Business Plan','O2SN PK','FLS3N PK','GEMPITA Awards','Lainnya']),...INDIKATOR].map(f=>fieldHTML(f,'',true)).join('')}</div><button type="button" class="btn del" onclick="this.parentNode.remove();save()">Hapus</button></div>`);document.getElementById('indRows').appendChild(d)}
@@ -552,8 +553,8 @@ function printRekap(d){
   const verCode=`${String(s.npsn).trim()}-${now.toISOString().slice(0,10).replace(/-/g,'')}`;
   const filledCnt=NAMES.filter(([k])=>filled(k)).length;
   const totSiswa=n26('01_Profil','siswa_L')+n26('01_Profil','siswa_P');
-  const totGuru=n26('01_Profil','guru_pns')+n26('01_Profil','guru_pppk')+n26('01_Profil','guru_gty');
-  const totTendik=n26('01_Profil','tendik_pns')+n26('01_Profil','tendik_non');
+  const totGuru=n26('01_Profil','guru_pns')+n26('01_Profil','guru_pppk')+n26('01_Profil','guru_pppk_pw')+n26('01_Profil','guru_gty');
+  const totTendik=n26('01_Profil','tendik_pns')+n26('01_Profil','tendik_pppk')+n26('01_Profil','tendik_pppk_pw')+n26('01_Profil','tendik_non');
   const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Bukti Pengisian - ${esc(s.nama)}</title>
 <style>
 @page{size:A4;margin:13mm 14mm 15mm 14mm}
@@ -727,7 +728,7 @@ function toast(t,ok){
 
 const REQUIRED_CORE={
   identitas:['npsn','nama','jenjang','status','kabupaten','kecamatan','kepsek','pengisi','kontak'],
-  '01_Profil':['rombel_2026','siswa_L_2026','siswa_P_2026','guru_pns_2026','guru_pppk_2026','guru_gty_2026','akreditasi','lokasi'],
+  '01_Profil':['rombel_2026','siswa_L_2026','siswa_P_2026','guru_pns_2026','guru_pppk_2026','guru_pppk_pw_2026','guru_gty_2026','tendik_pns_2026','tendik_pppk_2026','tendik_pppk_pw_2026','tendik_non_2026','akreditasi','lokasi'],
   '02_Anggaran':['lpj','temuan'],
   '03_Sarpras_SDM':['kelas_baik_2026','kelas_rr_2026','kelas_rs_2026','kelas_rb_2026','revit_status'],
   '04_Mutu':['kurikulum','lulus_persen_2026'],

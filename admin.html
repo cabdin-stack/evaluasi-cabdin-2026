@@ -388,7 +388,7 @@ function kpi(){
   const badAng=angAll.filter(r=>num(r.realisasi)>num(r.pagu)).length;
   const pr26=pr.filter(r=>String(r.tahun||'2026')==='2026'),pr25=pr.length-pr26.length;
   const siswa=prof.reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0);
-  const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0);
+  const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_pppk_pw')+val(r,'guru_gty'),0);
   const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
   const nas26=pr26.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
   const K=[[sudah+(hasMaster?' / '+tot:''),'Sekolah sudah mengisi'+(luarCount?` (+${luarCount} di luar Master)`:'')],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
@@ -413,7 +413,7 @@ function charts_(){
   const byJ=j=>prof.filter(r=>String(r.Jenjang||'').trim().toUpperCase()===j);
   mk('Jumlah Siswa & Guru per Jenjang (2026)','bar',J,[
     {label:'Siswa',data:J.map(j=>byJ(j).reduce((a,r)=>a+val(r,'siswa_L')+val(r,'siswa_P'),0)),backgroundColor:COL[0]},
-    {label:'Guru',data:J.map(j=>byJ(j).reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_gty'),0)),backgroundColor:COL[2]}]);
+    {label:'Guru',data:J.map(j=>byJ(j).reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_pppk_pw')+val(r,'guru_gty'),0)),backgroundColor:COL[2]}]);
   // 3 anggaran per sumber (hanya baris valid: pagu > 0 dan realisasi <= pagu)
   const ang=validAng(g('02_Anggaran_Rinci')),src={};
   ang.forEach(r=>{const k=r.sumber||'-';const o=src[k]||(src[k]={p:0,r:0});o.p+=num(r.pagu);o.r+=num(r.realisasi)});
@@ -489,9 +489,9 @@ const _v25=(S,s,ks,k25)=>{
 const METRICS=[
  {k:'siswa',l:'Jumlah siswa',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['siswa_L','siswa_P'],'siswa'):_s(S,'01_Profil',['siswa_L','siswa_P'],'2026')},
  {k:'rombel',l:'Jumlah rombel',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['rombel'],'rombel'):_s(S,'01_Profil',['rombel'],'2026')},
- {k:'guru',l:'Jumlah guru',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_pns','guru_pppk','guru_gty'],'guru'):_s(S,'01_Profil',['guru_pns','guru_pppk','guru_gty'],'2026')},
+ {k:'guru',l:'Jumlah guru',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'guru'):_s(S,'01_Profil',['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2026')},
  {k:'guru_sert',l:'Guru bersertifikat pendidik',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['guru_sertifikasi'],'guru_sert'):_s(S,'01_Profil',['guru_sertifikasi'],'2026')},
- {k:'tendik',l:'Tenaga kependidikan',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['tendik_pns','tendik_non'],'tendik'):_s(S,'01_Profil',['tendik_pns','tendik_non'],'2026')},
+ {k:'tendik',l:'Tenaga kependidikan',f:(S,yr)=>yr==='2025'?_v25(S,'01_Profil',['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'tendik'):_s(S,'01_Profil',['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'2026')},
  {k:'kelas_baik',l:'Ruang kelas kondisi baik',f:(S,yr)=>yr==='2025'?_v25(S,'03_Sarpras_SDM',['kelas_baik'],'kelas_baik'):_s(S,'03_Sarpras_SDM',['kelas_baik'],'2026')},
  {k:'kelas_rusak',l:'Ruang kelas rusak (ringan+sedang+berat)',good:-1,f:(S,yr)=>yr==='2025'?_v25(S,'03_Sarpras_SDM',['kelas_rr','kelas_rs','kelas_rb'],'kelas_rusak'):_s(S,'03_Sarpras_SDM',['kelas_rr','kelas_rs','kelas_rb'],'2026')},
  {k:'tka',l:'Rerata nilai TKA',avg:1,f:(S,yr)=>yr==='2025'?_v25(S,'04_Mutu',['rerata_tka'],'tka'):_s(S,'04_Mutu',['rerata_tka'],'2026')},
@@ -667,7 +667,7 @@ function printRekapCabdin(mode='lengkap'){
   const pillList=(arr,k)=>cntV(arr,k).map(([a,b])=>`<span class="pill">${esc(a)}: <b>${b}</b></span>`).join('')||'<span class="mut">-</span>';
   const now=new Date(),tgl=now.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
   const tglJam=now.toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  const totSiswa26=sumY(prof,['siswa_L','siswa_P'],'2026'), totGuru26=sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2026');
+  const totSiswa26=sumY(prof,['siswa_L','siswa_P'],'2026'), totGuru26=sumY(prof,['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2026');
 
   const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>${isFull?'Laporan Lengkap':'Ringkasan Eksekutif'} Evaluasi Kinerja 2026 - Cabdin Jember</title>
 <style>
@@ -764,9 +764,17 @@ ${cmpRow('Jumlah Rombel',sumY(prof,['rombel'],'2025'),sumY(prof,['rombel'],'2026
 ${cmpRow('Jumlah Siswa (L+P)',sumY(prof,['siswa_L','siswa_P'],'2025'),totSiswa26)}
 ${cmpRow('Siswa Berkebutuhan Khusus / Inklusi',sumY(prof,['siswa_abk'],'2025'),sumY(prof,['siswa_abk'],'2026'))}
 ${cmpRow('Siswa Kurang Mampu (KIP/PIP)',sumY(prof,['siswa_kurangmampu'],'2025'),sumY(prof,['siswa_kurangmampu'],'2026'))}
-${cmpRow('Guru (PNS + PPPK + Yayasan/GTT)',sumY(prof,['guru_pns','guru_pppk','guru_gty'],'2025'),totGuru26)}
+${cmpRow('Total Guru (PNS + PPPK Penuh/Paruh Waktu + Non-ASN)',sumY(prof,['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2025'),totGuru26)}
+${cmpRow('↳ Guru PNS',sumY(prof,['guru_pns'],'2025'),sumY(prof,['guru_pns'],'2026'))}
+${cmpRow('↳ Guru PPPK Penuh Waktu',sumY(prof,['guru_pppk'],'2025'),sumY(prof,['guru_pppk'],'2026'))}
+${cmpRow('↳ Guru PPPK Paruh Waktu',sumY(prof,['guru_pppk_pw'],'2025'),sumY(prof,['guru_pppk_pw'],'2026'))}
+${cmpRow('↳ Guru Non-ASN (GTY/GTT)',sumY(prof,['guru_gty'],'2025'),sumY(prof,['guru_gty'],'2026'))}
 ${cmpRow('Guru Bersertifikat Pendidik',sumY(prof,['guru_sertifikasi'],'2025'),sumY(prof,['guru_sertifikasi'],'2026'))}
-${cmpRow('Tenaga Kependidikan (ASN + Non-ASN)',sumY(prof,['tendik_pns','tendik_non'],'2025'),sumY(prof,['tendik_pns','tendik_non'],'2026'))}</tbody></table>
+${cmpRow('Total Tenaga Kependidikan (PNS + PPPK Penuh/Paruh Waktu + Non-ASN)',sumY(prof,['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'2025'),sumY(prof,['tendik_pns','tendik_pppk','tendik_pppk_pw','tendik_non'],'2026'))}
+${cmpRow('↳ Tendik PNS',sumY(prof,['tendik_pns'],'2025'),sumY(prof,['tendik_pns'],'2026'))}
+${cmpRow('↳ Tendik PPPK Penuh Waktu',sumY(prof,['tendik_pppk'],'2025'),sumY(prof,['tendik_pppk'],'2026'))}
+${cmpRow('↳ Tendik PPPK Paruh Waktu',sumY(prof,['tendik_pppk_pw'],'2025'),sumY(prof,['tendik_pppk_pw'],'2026'))}
+${cmpRow('↳ Tendik Non-ASN',sumY(prof,['tendik_non'],'2025'),sumY(prof,['tendik_non'],'2026'))}</tbody></table>
 <p class="sub"><b>Sebaran Lokasi</b></p><div class="pill-row">${pillList(prof,'lokasi')}</div>
 <p class="sub"><b>Sebaran Akreditasi</b></p><div class="pill-row">${pillList(prof,'akreditasi')}</div>
 ${noteBlock(prof,'kebutuhan','Peta Kebutuhan & Pemerataan Layanan')}

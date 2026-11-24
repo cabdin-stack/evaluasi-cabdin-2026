@@ -284,6 +284,7 @@ SECTIONS.forEach((s,i)=>{
     <button type="button" class="btn sec" onclick="addPrestasi()">+ Tambah Prestasi</button>`;
   } else {
     if(s.custom==='anggaran')h+=`<h3>Pagu dan Realisasi Anggaran 2025 &amp; 2026 (Rupiah, angka penuh)</h3>
+    <div class="note"><b>Catatan:</b> Isian <b>Realisasi Anggaran 2026</b> sementara diisi <b>sampai dengan bulan Oktober 2026</b>.</div>
     <div id="angRows"></div>
     <button type="button" class="btn sec" onclick="addAng()">+ Tambah Sumber Dana</button>
     <div class="grid" style="margin-top:14px;background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:10px">
@@ -291,8 +292,8 @@ SECTIONS.forEach((s,i)=>{
       <div><label>TOTAL % Realisasi 2025</label><input name="total_persen_2025" readonly></div>
       <div><label>Sisa Anggaran 2025</label><input name="total_sisa_2025" readonly></div></div>
     <div class="grid" style="margin-top:8px;background:#eef3ff;padding:12px;border-radius:10px">
-      <div><label>TOTAL Realisasi 2026</label><input name="total_real" readonly></div>
-      <div><label>TOTAL % Realisasi 2026</label><input name="total_persen" readonly></div>
+      <div><label>TOTAL Realisasi 2026 (s.d. Okt)</label><input name="total_real" readonly></div>
+      <div><label>TOTAL % Realisasi 2026 (s.d. Okt)</label><input name="total_persen" readonly></div>
       <div><label>Sisa Anggaran 2026</label><input name="total_sisa" readonly></div></div>`;
     const singleNum=s.id.startsWith('09')||s.id.startsWith('10');
     s.groups.forEach(g=>{h+=(g.h?`<h3>${g.h}</h3>`:'')+`<div class="grid">${g.f.map(f=>fieldHTML(f,'',singleNum)).join('')}</div>`});
@@ -318,8 +319,8 @@ function addAng(nama=''){
    <div><label>Realisasi 2025 (Rp)</label><input type="number" min="0" name="realisasi_2025"></div>
    <div><label>% Realisasi 2025</label><input name="persen_2025" readonly placeholder="otomatis"></div>
    <div><label>Pagu 2026 (Rp)${reqBB?' *':''}</label><input type="number" min="0" name="pagu"></div>
-   <div><label>Realisasi 2026 (Rp)${reqBB?' *':''}</label><input type="number" min="0" name="realisasi"></div>
-   <div><label>% Realisasi 2026</label><input name="persen" readonly placeholder="otomatis"></div></div>
+   <div><label>Realisasi 2026 s.d. Okt (Rp)${reqBB?' *':''}</label><input type="number" min="0" name="realisasi"></div>
+   <div><label>% Realisasi 2026 (s.d. Okt)</label><input name="persen" readonly placeholder="otomatis"></div></div>
    ${fixed?'':'<button type="button" class="btn del" onclick="this.parentNode.remove();calcAng();save()">Hapus</button>'}</div>`);
   document.getElementById('angRows').appendChild(d);
 }
@@ -515,7 +516,7 @@ function printRekap(d){
     const o=S[sec.id]||{};
     if(sec.custom==='anggaran'){
       const tp25=ang.reduce((a,r)=>a+(+r.pagu_2025||0),0),tr25=ang.reduce((a,r)=>a+(+r.realisasi_2025||0),0);
-      rekap+=`<b>Pagu dan Realisasi Anggaran 2025 &amp; 2026</b>`+(ang.length?`<table><tr><th>Sumber Dana</th><th>Pagu 2025</th><th>Realisasi 2025</th><th>% 2025</th><th>Pagu 2026</th><th>Realisasi 2026</th><th>% 2026</th></tr>${ang.map(r=>`<tr><td>${esc(r.sumber)}</td><td align="right">${+r.pagu_2025?rpf(+r.pagu_2025):'-'}</td><td align="right">${+r.realisasi_2025?rpf(+r.realisasi_2025):'-'}</td><td align="center">${+r.pagu_2025?((+r.realisasi_2025||0)/+r.pagu_2025*100).toFixed(2)+'%':'-'}</td><td align="right">${+r.pagu?rpf(+r.pagu):'-'}</td><td align="right">${+r.realisasi?rpf(+r.realisasi):'-'}</td><td align="center">${+r.pagu?((+r.realisasi||0)/+r.pagu*100).toFixed(2)+'%':'-'}</td></tr>`).join('')}<tr><th>TOTAL</th><th align="right">${tp25?rpf(tp25):'-'}</th><th align="right">${tr25?rpf(tr25):'-'}</th><th>${tp25?(tr25/tp25*100).toFixed(2)+'%':'-'}</th><th align="right">${rpf(tp)}</th><th align="right">${rpf(tr)}</th><th>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</th></tr></table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
+      rekap+=`<b>Pagu dan Realisasi Anggaran 2025 &amp; 2026 (Realisasi 2026 sementara s.d. Oktober)</b>`+(ang.length?`<table><tr><th>Sumber Dana</th><th>Pagu 2025</th><th>Realisasi 2025</th><th>% 2025</th><th>Pagu 2026</th><th>Realisasi 2026 (s.d. Okt)</th><th>% 2026</th></tr>${ang.map(r=>`<tr><td>${esc(r.sumber)}</td><td align="right">${+r.pagu_2025?rpf(+r.pagu_2025):'-'}</td><td align="right">${+r.realisasi_2025?rpf(+r.realisasi_2025):'-'}</td><td align="center">${+r.pagu_2025?((+r.realisasi_2025||0)/+r.pagu_2025*100).toFixed(2)+'%':'-'}</td><td align="right">${+r.pagu?rpf(+r.pagu):'-'}</td><td align="right">${+r.realisasi?rpf(+r.realisasi):'-'}</td><td align="center">${+r.pagu?((+r.realisasi||0)/+r.pagu*100).toFixed(2)+'%':'-'}</td></tr>`).join('')}<tr><th>TOTAL</th><th align="right">${tp25?rpf(tp25):'-'}</th><th align="right">${tr25?rpf(tr25):'-'}</th><th>${tp25?(tr25/tp25*100).toFixed(2)+'%':'-'}</th><th align="right">${rpf(tp)}</th><th align="right">${rpf(tr)}</th><th>${tp?(tr/tp*100).toFixed(2)+'%':'-'}</th></tr></table>`:'<p style="margin:2px"><i>– belum diisi –</i></p>');
     }
     const singleNum=sec.id.startsWith('09')||sec.id.startsWith('10');
     sec.groups.forEach(g=>{

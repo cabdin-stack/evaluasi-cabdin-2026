@@ -313,9 +313,9 @@ function addPrestasi(){const d=el(`<div class="row"><div class="grid">${PRESTASI
 addInd();addPrestasi();
 
 // ===== Anggaran: baris sumber dana + persentase otomatis =====
-const FIXED_ANG=['BOS','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
+const FIXED_ANG=['BOSP+BOSkinerja','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
 function addAng(nama=''){
-  const fixed=!!nama,reqBB=(nama==='BOS'||nama==='BPOPP');
+  const fixed=!!nama,reqBB=(nama==='BOSP+BOSkinerja'||nama==='BPOPP');
   const d=el(`<div class="row"><div class="grid">
    <div class="full"><label>Sumber Dana${reqBB?' (Wajib diisi *)':''}</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
    <div><label>Pagu 2025 (Rp)</label><input type="number" min="0" name="pagu_2025"></div>
@@ -443,9 +443,10 @@ function populateFromData(d,master=null){
     } else if(name==='02_Anggaran_Rinci'){
       document.querySelectorAll('#angRows .row').forEach(rw=>{const sm=rw.querySelector('[name=sumber]');if(!sm.readOnly)rw.remove()});
       rows.forEach(o=>{
-        let rw=[...document.querySelectorAll('#angRows .row')].find(x=>{const s=x.querySelector('[name=sumber]');return s.readOnly&&s.value===o.sumber});
+        const smNorm=/^(bos|bosp)/i.test(String(o.sumber||'').trim())?'BOSP+BOSkinerja':o.sumber;
+        let rw=[...document.querySelectorAll('#angRows .row')].find(x=>{const s=x.querySelector('[name=sumber]');return s.readOnly&&s.value===smNorm});
         if(!rw){addAng();rw=document.getElementById('angRows').lastElementChild}
-        fillRow(rw,o);
+        fillRow(rw,{...o,sumber:smNorm});
       });
       calcAng();
     } else if(pg[name]){
@@ -807,11 +808,11 @@ function validateAllFields(onlyIds=null){
   }
   if(inc('05_Program')&&valOf('05_Program','sakti')==='Ada')req(pg['05_Program'],'sakti_ket','Wajib diisi jika SAKTI Ada');
   if(inc('05_Program')&&valOf('05_Program','tefa')==='Ada')req(pg['05_Program'],'tefa_ket','Wajib diisi jika TEFA Ada');
-  // 3. Cek Anggaran: BOS dan BPOPP wajib diisi (Pagu & Realisasi 2026)
+  // 3. Cek Anggaran: BOSP+BOSkinerja dan BPOPP wajib diisi (Pagu & Realisasi 2026)
   if(inc('02_Anggaran')){
     document.querySelectorAll('#angRows .row').forEach(r=>{
       const sm=(r.querySelector('[name=sumber]').value||'').trim();
-      if(sm==='BOS'||sm==='BPOPP'){
+      if(sm==='BOSP+BOSkinerja'||sm==='BPOPP'){
         const p=r.querySelector('[name=pagu]'),rl=r.querySelector('[name=realisasi]');
         if(p.value.trim()===''){markFieldErr(p,`Pagu ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(p)}
         if(rl.value.trim()===''){markFieldErr(rl,`Realisasi ${sm} 2026 wajib diisi (isi 0 jika tidak ada)`);errs.push(rl)}

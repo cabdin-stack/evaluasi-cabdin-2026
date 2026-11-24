@@ -243,7 +243,15 @@ if(getSession()){$('login').style.display='none';$('loadingBox').style.display='
 
 function show(d){
   D=d;
-  if(Array.isArray(D['02_Anggaran_Rinci']))D['02_Anggaran_Rinci']=D['02_Anggaran_Rinci'].filter(r=>!/^dak\b/i.test(String(r.sumber||'').trim()));
+  if(Array.isArray(D['02_Anggaran_Rinci'])){
+    D['02_Anggaran_Rinci']=D['02_Anggaran_Rinci']
+      .filter(r=>!/^dak\b/i.test(String(r.sumber||'').trim()))
+      .map(r=>{
+        const sm=String(r.sumber||'').trim();
+        if(/^(bos|bosp)/i.test(sm))return {...r,sumber:'BOSP+BOSkinerja'};
+        return r;
+      });
+  }
   $('login').style.display='none';$('loadingBox').style.display='none';$('app').style.display='';$('hbtn').style.display='flex';
   updateSessInfo();build();
 }
@@ -297,7 +305,7 @@ function build(){
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderAngAnom();renderDataAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
 }
-const MAIN_BANTUAN=['BOS','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
+const MAIN_BANTUAN=['BOSP+BOSkinerja','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
 function buildAngPivot(){
   const schMap={};rows.forEach(r=>schMap[r.npsn]=r);
   const bySch={},sumberSet=new Set(),has25Rinci=new Set();
@@ -345,7 +353,7 @@ function pickAngBantuan(name){
 function countPenerimaPerJenjang(filterKab='',filterStat=''){
   const schMap={};rows.forEach(r=>schMap[r.npsn]=r);
   const J=['SMA','SMK','SLB'],res={};
-  J.forEach(j=>res[j]={bos25:new Set(),bos26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()});
+  J.forEach(j=>res[j]={bosp25:new Set(),bosp26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()});
   const getJ=r=>{
     const k=String(r.NPSN||'').trim(),s=schMap[k];
     const j=String((s&&s.jenjang)||r.Jenjang||'').trim().toUpperCase();
@@ -361,7 +369,7 @@ function countPenerimaPerJenjang(filterKab='',filterStat=''){
     const h25=num(r.pagu_2025)>0||num(r.realisasi_2025)>0;
     const h26=num(r.pagu)>0||num(r.realisasi)>0;
     const sm=String(r.sumber||'').trim(),o=res[info.j];
-    if(/^bos\b/i.test(sm)){if(h25)o.bos25.add(info.k);if(h26)o.bos26.add(info.k)}
+    if(/^(bosp|bos)/i.test(sm)){if(h25)o.bosp25.add(info.k);if(h26)o.bosp26.add(info.k)}
     if(/bpopp/i.test(sm)){if(h25)o.bpopp25.add(info.k);if(h26)o.bpopp26.add(info.k)}
     if(/revitalisasi/i.test(sm)){if(h25)o.revit25.add(info.k);if(h26)o.revit26.add(info.k)}
   });
@@ -369,7 +377,7 @@ function countPenerimaPerJenjang(filterKab='',filterStat=''){
     const info=getJ(r);if(!info)return;
     if(String(r.revit_status||'').trim()==='Ya')res[info.j].revit26.add(info.k);
   });
-  const out={},tot={bos25:0,bos26:0,bpopp25:0,bpopp26:0,revit25:0,revit26:0};
+  const out={},tot={bosp25:0,bosp26:0,bpopp25:0,bpopp26:0,revit25:0,revit26:0};
   J.forEach(j=>{
     out[j]={};
     Object.keys(tot).forEach(k=>{out[j][k]=res[j][k].size;tot[k]+=out[j][k]});
@@ -379,10 +387,10 @@ function countPenerimaPerJenjang(filterKab='',filterStat=''){
 function penerimaJenjangTableHTML(filterKab='',filterStat=''){
   const {byJ,tot}=countPenerimaPerJenjang(filterKab,filterStat);
   const J=['SMA','SMK','SLB'];
-  return `<tr><th rowspan="2">Jenjang</th><th colspan="2" style="text-align:center">Penerima BOS (Lembaga)</th><th colspan="2" style="text-align:center">Penerima BPOPP (Lembaga)</th><th colspan="2" style="text-align:center">Penerima Revitalisasi (Lembaga)</th></tr>
+  return `<tr><th rowspan="2">Jenjang</th><th colspan="2" style="text-align:center">Penerima BOSP+BOSkinerja</th><th colspan="2" style="text-align:center">Penerima BPOPP</th><th colspan="2" style="text-align:center">Penerima Revitalisasi</th></tr>
   <tr><th style="text-align:center">2025</th><th style="text-align:center">2026</th><th style="text-align:center">2025</th><th style="text-align:center">2026</th><th style="text-align:center">2025</th><th style="text-align:center">2026</th></tr>`+
-  J.map(j=>`<tr><td><b>${j}</b></td><td style="text-align:center">${byJ[j].bos25}</td><td style="text-align:center"><b>${byJ[j].bos26}</b></td><td style="text-align:center">${byJ[j].bpopp25}</td><td style="text-align:center"><b>${byJ[j].bpopp26}</b></td><td style="text-align:center">${byJ[j].revit25}</td><td style="text-align:center"><b>${byJ[j].revit26}</b></td></tr>`).join('')+
-  `<tr class="tot" style="background:#eef3ff;font-weight:700"><td>TOTAL</td><td style="text-align:center">${tot.bos25}</td><td style="text-align:center">${tot.bos26}</td><td style="text-align:center">${tot.bpopp25}</td><td style="text-align:center">${tot.bpopp26}</td><td style="text-align:center">${tot.revit25}</td><td style="text-align:center">${tot.revit26}</td></tr>`;
+  J.map(j=>`<tr><td><b>${j}</b></td><td style="text-align:center">${byJ[j].bosp25}</td><td style="text-align:center"><b>${byJ[j].bosp26}</b></td><td style="text-align:center">${byJ[j].bpopp25}</td><td style="text-align:center"><b>${byJ[j].bpopp26}</b></td><td style="text-align:center">${byJ[j].revit25}</td><td style="text-align:center"><b>${byJ[j].revit26}</b></td></tr>`).join('')+
+  `<tr class="tot" style="background:#eef3ff;font-weight:700"><td>TOTAL</td><td style="text-align:center">${tot.bosp25}</td><td style="text-align:center">${tot.bosp26}</td><td style="text-align:center">${tot.bpopp25}</td><td style="text-align:center">${tot.bpopp26}</td><td style="text-align:center">${tot.revit25}</td><td style="text-align:center">${tot.revit26}</td></tr>`;
 }
 function renderAngSekolah(){
   const {cols,list}=buildAngPivot();
@@ -394,9 +402,9 @@ function renderAngSekolah(){
   const rpf=v=>v?'Rp '+Math.round(v).toLocaleString('id-ID'):'-';
   const show25=ay==='both'||ay==='2025',show26=ay==='both'||ay==='2026';
 
-  // Indikator ringkasan khusus 3 bantuan utama (BOS, BPOPP, Revitalisasi); bantuan lainnya tetap tampil di tabel & rekap
+  // Indikator ringkasan khusus 3 bantuan utama (BOSP+BOSkinerja, BPOPP, Revitalisasi); bantuan lainnya tetap tampil di tabel & rekap
   const kYr=ay==='2025'?'25':'26';
-  const kpiCols=cols.filter(c=>/^(bos|bpopp|revitalisasi)/i.test(c));
+  const kpiCols=cols.filter(c=>/^(bosp|bos|bpopp|revitalisasi)/i.test(c));
   $('angKpi').innerHTML=kpiCols.map(c=>{
     let tp=0,tr=0,n25=0,n26=0,anom=0;
     baseList.forEach(r=>{
@@ -503,13 +511,13 @@ function renderDataAnom(){
 }
 function countPenerimaBantuan(){
   const ang=g('02_Anggaran_Rinci'),srp=g('03_Sarpras_SDM');
-  const s={bos25:new Set(),bos26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()};
+  const s={bosp25:new Set(),bosp26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()};
   ang.forEach(r=>{
     const k=String(r.NPSN||'').trim();if(!k)return;
     const h25=num(r.pagu_2025)>0||num(r.realisasi_2025)>0;
     const h26=num(r.pagu)>0||num(r.realisasi)>0;
     const sm=String(r.sumber||'').trim();
-    if(/^bos\b/i.test(sm)){if(h25)s.bos25.add(k);if(h26)s.bos26.add(k)}
+    if(/^(bosp|bos)/i.test(sm)){if(h25)s.bosp25.add(k);if(h26)s.bosp26.add(k)}
     if(/bpopp/i.test(sm)){if(h25)s.bpopp25.add(k);if(h26)s.bpopp26.add(k)}
     if(/revitalisasi/i.test(sm)){if(h25)s.revit25.add(k);if(h26)s.revit26.add(k)}
   });
@@ -517,7 +525,7 @@ function countPenerimaBantuan(){
     const k=String(r.NPSN||'').trim();
     if(k&&String(r.revit_status||'').trim()==='Ya')s.revit26.add(k);
   });
-  return {bos25:s.bos25.size,bos26:s.bos26.size,bpopp25:s.bpopp25.size,bpopp26:s.bpopp26.size,revit25:s.revit25.size,revit26:s.revit26.size};
+  return {bosp25:s.bosp25.size,bosp26:s.bosp26.size,bpopp25:s.bpopp25.size,bpopp26:s.bpopp26.size,revit25:s.revit25.size,revit26:s.revit26.size};
 }
 function kpi(){
   const hasMaster=g('Master_Sekolah').length>0;
@@ -534,7 +542,7 @@ function kpi(){
   const pen=countPenerimaBantuan();
   const K=[[sudah+(hasMaster?' / '+tot:''),'Sekolah sudah mengisi'+(luarCount?` (+${luarCount} di luar Master)`:'')],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
    [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026 s.d. Okt'+(badAng?` (${badAng} anomali dikecualikan)`:'')],
-   [pen.bos25+' / '+pen.bos26,'Penerima BOS (2025 / 2026)'],[pen.bpopp25+' / '+pen.bpopp26,'Penerima BPOPP (2025 / 2026)'],[pen.revit25+' / '+pen.revit26,'Penerima Revitalisasi (2025 / 2026)']];
+   [pen.bosp25+' / '+pen.bosp26,'Penerima BOSP+BOSkinerja (2025 / 2026)'],[pen.bpopp25+' / '+pen.bpopp26,'Penerima BPOPP (2025 / 2026)'],[pen.revit25+' / '+pen.revit26,'Penerima Revitalisasi (2025 / 2026)']];
   $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
 }
 function mk(title,type,labels,sets,opts={}){
@@ -700,8 +708,8 @@ const METRICS=[
  {k:'lolos_prov',l:'Lolos/Juara tingkat Provinsi',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_prov','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'lolos_prov','2025'):_v25(S,'',[],'lolos_prov')}},
  {k:'lolos_nas',l:'Menembus tingkat Nasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'lolos_nas','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'lolos_nas','2025'):_v25(S,'',[],'lolos_nas')}},
  {k:'juara_int',l:'Prestasi Internasional',f:(S,yr)=>{if(yr==='2026')return _ind(S,'juara_int','2026');const has25=(S['06_Indikator_Prestasi']||[]).some(r=>String(r.tahun)==='2025');return has25?_ind(S,'juara_int','2025'):_v25(S,'',[],'juara_int')}},
- {k:'bos_pagu',l:'Pagu BOS (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^bos\b/i,'pagu',yr)},
- {k:'bos_real',l:'Realisasi BOS (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^bos\b/i,'realisasi',yr)},
+ {k:'bosp_pagu',l:'Pagu BOSP+BOSkinerja (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^(bosp|bos)/i,'pagu',yr)},
+ {k:'bosp_real',l:'Realisasi BOSP+BOSkinerja (Rp)',rp:1,f:(S,yr)=>_angBy(S,/^(bosp|bos)/i,'realisasi',yr)},
  {k:'bpopp_pagu',l:'Pagu BPOPP (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bpopp/i,'pagu',yr)},
  {k:'bpopp_real',l:'Realisasi BPOPP (Rp)',rp:1,f:(S,yr)=>_angBy(S,/bpopp/i,'realisasi',yr)},
  {k:'revit_pagu',l:'Pagu Revitalisasi (Rp)',rp:1,f:(S,yr)=>_angBy(S,/revitalisasi/i,'pagu',yr)},
@@ -985,7 +993,7 @@ ${cmpRow('↳ Tendik Non-ASN',sumY(prof,['tendik_non'],'2025'),sumY(prof,['tendi
 ${noteBlock(prof,'kebutuhan','Peta Kebutuhan & Pemerataan Layanan')}
 
 ${secHdr('02','ANGGARAN DAN TATA KELOLA')}
-<p class="sub"><b>Jumlah Lembaga Penerima BOS, BPOPP, dan Revitalisasi per Jenjang (2025 &amp; 2026)</b></p>
+<p class="sub"><b>Jumlah Lembaga Penerima BOSP+BOSkinerja, BPOPP, dan Revitalisasi per Jenjang (2025 &amp; 2026)</b></p>
 <table>${penerimaJenjangTableHTML()}</table>
 <p class="mut">Catatan: Realisasi anggaran tahun 2026 sementara sampai dengan bulan Oktober 2026 (baris anomali &gt;100% dikecualikan).</p>
 <table><thead><tr><th>Sumber Dana</th><th style="text-align:right">Pagu (Rp)</th><th style="text-align:right">Realisasi s.d. Okt 2026 (Rp)</th><th width="160">% Realisasi</th></tr></thead><tbody>${tblAng||'<tr><td colspan="4" align="center">Belum ada data anggaran</td></tr>'}

@@ -95,6 +95,10 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <p style="font-size:.82rem;margin:0 0 8px;color:#7f1d1d">Daftar sekolah berikut memiliki realisasi lebih besar dari pagu (kemungkinan salah ketik angka nol, pagu kosong, atau terbalik). Perbaiki di sheet <b>02_Anggaran_Rinci</b> atau minta sekolah merevisi.</p>
 <div class="tw"><table id="tangAnom"></table></div></div>
 
+<div class="card" id="dataAnomCard" style="display:none;border-color:#fca5a5"><h2 style="color:#b91c1c">⚠ Anomali Data Mutu &amp; Prestasi (TKA/Kelulusan &gt; 100 atau Juara Desimal)</h2>
+<p style="font-size:.82rem;margin:0 0 8px;color:#7f1d1d">Daftar sekolah berikut memiliki salah ketik angka di sheet <b>04_Mutu</b> atau <b>06_Indikator_Prestasi</b>. Perbaiki langsung di Spreadsheet atau minta sekolah merevisi.</p>
+<div class="tw"><table id="tdataAnom"></table></div></div>
+
 <div class="card"><h2>Status Pengisian per Sekolah</h2>
 <div class="bar">
 <input id="q" placeholder="Cari nama/NPSN" oninput="renderStatus()">
@@ -284,7 +288,7 @@ function build(){
     rows.push({npsn:m.npsn,nama:m.nama,jenjang:m.jenjang,status:m.status,kab:m.kab,secs:new Set(),jml:0,waktu:'',prestasi:0,sudah:false,inMaster:true,kepsek:''});
   });
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
-  kpi();charts_();renderAngAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
+  kpi();charts_();renderAngAnom();renderDataAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
 }
 const MAIN_BANTUAN=['BOS','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
 function buildAngPivot(){
@@ -471,6 +475,24 @@ function renderAngAnom(){
   const rpf=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
   $('tangAnom').innerHTML='<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Status</th><th>Sumber Dana</th><th>Pagu</th><th>Realisasi</th><th>% Realisasi</th></tr>'+
     bad.map((r,i)=>{const p=num(r.pagu),rl=num(r.realisasi);return `<tr><td>${i+1}</td><td>${esc(r.NPSN)}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(normStat(r.Status))}</td><td>${esc(r.sumber)}</td><td style="text-align:right">${rpf(p)}</td><td style="text-align:right;color:#b91c1c;font-weight:700">${rpf(rl)}</td><td style="text-align:center;color:#b91c1c;font-weight:700">${p?(rl/p*100).toFixed(1)+'%':'Pagu 0'}</td></tr>`}).join('');
+}
+function renderDataAnom(){
+  const bad=[];
+  g('04_Mutu').forEach(r=>{
+    [['rerata_tka_2025','Rerata TKA 2025'],['rerata_tka_2026','Rerata TKA 2026'],['rerata_tka','Rerata TKA'],['lulus_persen_2025','Kelulusan 2025 (%)'],['lulus_persen_2026','Kelulusan 2026 (%)']].forEach(([k,lbl])=>{
+      if(has(r,k)&&num(r[k])>100)bad.push({npsn:r.NPSN,nama:r.Nama_Sekolah,sheet:'04_Mutu',kolom:lbl,nilai:r[k],ket:'Melebihi 100'});
+    });
+  });
+  g('06_Indikator_Prestasi').forEach(r=>{
+    [['ikut','Mengikuti'],['juara_kab','Juara Kab'],['lolos_prov','Lolos Prov'],['lolos_nas','Nasional'],['juara_int','Internasional']].forEach(([k,lbl])=>{
+      if(has(r,k)&&!Number.isInteger(num(r[k])))bad.push({npsn:r.NPSN,nama:r.Nama_Sekolah,sheet:'06_Indikator_Prestasi',kolom:`${lbl} (${r.lomba_rekap||'-'} ${r.tahun||'2026'})`,nilai:r[k],ket:'Angka desimal/koma'});
+    });
+  });
+  const card=$('dataAnomCard');
+  if(!bad.length){card.style.display='none';return}
+  card.style.display='';
+  $('tdataAnom').innerHTML='<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Sheet</th><th>Kolom</th><th>Nilai Tercatat</th><th>Keterangan</th></tr>'+
+    bad.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.npsn)}</td><td>${esc(x.nama)}</td><td><code>${esc(x.sheet)}</code></td><td>${esc(x.kolom)}</td><td style="color:#b91c1c;font-weight:700">${esc(x.nilai)}</td><td>${esc(x.ket)}</td></tr>`).join('');
 }
 function countPenerimaBantuan(){
   const ang=g('02_Anggaran_Rinci'),srp=g('03_Sarpras_SDM');

@@ -193,7 +193,7 @@ const SECTIONS = [
   A('inovasi_digital','Praktik digitalisasi & pemanfaatan AI')]},
  {h:'TKA, Asesmen, Kelulusan',f:[
   N('peserta_tka','Peserta TKA'),N('rerata_tka','Rerata Nilai TKA (0–100)',{max:100}),T('tka_mapel','Rerata per mapel (jika ada)'),
-  N('lulus_n','Jumlah Peserta Ujian Akhir'),N('lulus_persen','Persentase Kelulusan (%)',{max:100}),
+  N('lulus_n','Jumlah Peserta Ujian Akhir',{int:1}),N('lulus_jml','Jumlah Siswa Lulus',{int:1}),N('lulus_persen','Persentase Kelulusan (%) – otomatis',{max:100,ph:'otomatis'}),
   A('hasil_belajar','Analisis hasil belajar / asesmen')]},
  {h:'Literasi, Numerasi, Karakter, Budaya Sekolah',f:[
   T('literasi','Capaian literasi (kategori / skor)'),T('numerasi','Capaian numerasi (kategori / skor)'),
@@ -201,7 +201,7 @@ const SECTIONS = [
   A('karakter','Program penguatan karakter & budaya sekolah (anti-perundungan, 7 kebiasaan, dll.)')]},
  {h:'Lulusan (tahun lulus terakhir)',f:[
   N('lulus_ptn','Lulusan diterima PTN'),N('lulus_pts','Lulusan melanjutkan PTS/Vokasi'),N('lulus_kerja','Lulusan bekerja'),
-  N('lulus_wira','Lulusan berwirausaha'),N('lulus_belum','Belum bekerja/melanjutkan'),
+  N('lulus_wira','Lulusan berwirausaha'),N('lulus_belum','Belum bekerja/melanjutkan'),N('serap_persen','% Keterserapan Lulusan (otomatis)',{ro:1,ph:'otomatis'}),
   A('kemandirian','Kemandirian lulusan (khusus SLB: vokasional, kemandirian hidup)')]}]},
 
 {id:'05_Program',title:'05. Program Unggulan dan Inovasi',groups:[
@@ -260,12 +260,12 @@ const INDIKATOR=[N('ikut','Jumlah yang mengikuti',{int:1}),N('juara_kab','Juara 
 
 const el=(h)=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild};
 function fieldHTML(f,pre='',nd=false){
-  const nm=pre+f.n,rq=f.req?' required':'',mx=f.max?` max="${f.max}"`:'',st=f.int?'1':'any';
+  const nm=pre+f.n,rq=f.req?' required':'',mx=f.max?` max="${f.max}"`:'',st=f.int?'1':'any',ro=f.ro?' readonly':'',ph=f.ph?` placeholder="${f.ph}"`:'';
   let c;
   if(f.t==='select')c=`<select name="${nm}"${rq}><option value="">-- pilih --</option>${f.o.map(o=>`<option>${o}</option>`).join('')}</select>`;
-  else if(f.t==='number'&&!nd)return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label><div class="yr"><span>2025<input type="number" min="0"${mx} step="${st}" name="${nm}_2025"></span><span>2026<input type="number" min="0"${mx} step="${st}" name="${nm}_2026"></span></div></div>`;
+  else if(f.t==='number'&&!nd)return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label><div class="yr"><span>2025<input type="number" min="0"${mx} step="${st}" name="${nm}_2025"${ph}${ro}></span><span>2026<input type="number" min="0"${mx} step="${st}" name="${nm}_2026"${ph}${ro}></span></div></div>`;
   else if(f.t==='area')c=`<textarea name="${nm}"${rq}></textarea>`;
-  else c=`<input type="${f.t==='number'?'number':'text'}" ${f.t==='number'?`min="0"${mx} step="${st}"`:''} name="${nm}" placeholder="${f.ph||''}"${rq}>`;
+  else c=`<input type="${f.t==='number'?'number':'text'}" ${f.t==='number'?`min="0"${mx} step="${st}"`:''} name="${nm}"${ph}${rq}${ro}>`;
   return `<div class="${f.full?'full':''}"><label>${f.l}${f.req?' *':''}</label>${c}</div>`;
 }
 const pages=document.getElementById('pages'),nav=document.getElementById('nav');
@@ -351,7 +351,25 @@ function calcAng(){
   q('total_persen').value=tp?(tr/tp*100).toFixed(2)+'%':'';
   q('total_sisa').value=tp?rp(tp-tr):'';
 }
-document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#angRows'))calcAng()});
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#angRows'))calcAng();calcAutoPct()});
+function calcAutoPct(){
+  const q=n=>document.querySelector(`[name="${n}"]`);
+  ['2025','2026'].forEach(yr=>{
+    const xn=q('lulus_n_'+yr),xj=q('lulus_jml_'+yr),xp=q('lulus_persen_'+yr);
+    if(xn&&xj&&xp&&xn.value!==''&&xj.value!==''){
+      const n=+xn.value||0,j=+xj.value||0;
+      if(n>0){xp.value=Math.min(100,j/n*100).toFixed(2);clearFieldErr(xp)}
+    }
+    const ks=['lulus_ptn','lulus_pts','lulus_kerja','lulus_wira','lulus_belum'].map(k=>q(k+'_'+yr));
+    const xs=q('serap_persen_'+yr);
+    if(xs&&ks.every(Boolean)){
+      if(ks.some(x=>x.value!=='')){
+        const v=ks.map(x=>+x.value||0),serap=v[0]+v[1]+v[2]+v[3],tot=serap+v[4];
+        xs.value=tot?(serap/tot*100).toFixed(2):'';
+      } else xs.value='';
+    }
+  });
+}
 
 // ===== Verifikasi NPSN terhadap Master_Sekolah & Muat Data Lama =====
 pages.children[0].insertAdjacentHTML('afterbegin',`<div class="note" style="background:#e8f5e9;border-color:#8bc34a">

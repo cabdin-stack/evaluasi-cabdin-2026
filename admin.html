@@ -26,7 +26,7 @@ input,select{padding:7px;border:1px solid #b9c5de;border-radius:8px;font:inherit
 table{border-collapse:collapse;width:100%;font-size:.84rem}
 th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#eef3ff;position:sticky;top:0}
 .tw{max-height:420px;overflow:auto}
-.ok{color:#15803d;font-weight:700}.no{color:#b91c1c;font-weight:700}
+.ok{color:#15803d;font-weight:700}.part{color:#b45309;font-weight:700}.no{color:#b91c1c;font-weight:700}
 #login{max-width:360px;margin:80px auto;text-align:center}
 #login input{width:100%;margin:10px 0}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
@@ -84,7 +84,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <select id="fk" onchange="renderStatus()"><option value="">Semua Kabupaten</option><option>Jember</option><option>Lumajang</option></select>
 <select id="fj" onchange="renderStatus()"><option value="">Semua Jenjang</option><option>SMA</option><option>SMK</option><option>SLB</option></select>
 <select id="fs" onchange="renderStatus()"><option value="">Negeri &amp; Swasta</option><option>Negeri</option><option>Swasta</option></select>
-<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah mengisi</option><option value="kurang">Belum lengkap (&lt; 9/9)</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
+<select id="ff" onchange="renderStatus()"><option value="">Semua Status</option><option value="sudah">Sudah (Lengkap 9/9)</option><option value="kurang">Sebagian (&lt; 9/9)</option><option value="belum">Belum mengisi</option><option value="luar">⚠ Di luar Master_Sekolah</option></select>
 <button class="btn sec" onclick="csv()">⬇ Unduh CSV</button>
 <button class="btn" style="background:#0f766e" onclick="downloadStatusXls()">⬇ Unduh XLS</button>
 <span id="cnt"></span></div>
@@ -139,6 +139,7 @@ const SEC=['01_Profil','02_Anggaran','03_Sarpras_SDM','04_Mutu','05_Program','06
 const SEC_LBL={'01_Profil':'01 Profil','02_Anggaran':'02 Anggaran','03_Sarpras_SDM':'03 Sarpras & SDM','04_Mutu':'04 Mutu','05_Program':'05 Program','06_Prestasi':'06 Prestasi','07_Kemitraan':'07 Kemitraan','08_Evaluasi':'08 Evaluasi','09_Proyeksi2027':'09 Proyeksi 2027'};
 const missingSecs=r=>SEC.filter(s=>!r.secs.has(s)).map(s=>SEC_LBL[s]);
 const missingText=r=>!r.sudah?'Semua (01–09)':(r.jml>=SEC.length?'Lengkap':missingSecs(r).join(', '));
+const statusLabel=r=>!r.sudah?'Belum':(r.jml>=SEC.length?'Sudah':'Sebagian');
 
 const SESSION_HOURS=8,SESSION_KEY='cabdin2026_adm';
 function saveSession(pw){try{localStorage.setItem(SESSION_KEY,JSON.stringify({pw,exp:Date.now()+SESSION_HOURS*3600*1000}))}catch(e){}}
@@ -406,13 +407,15 @@ function charts_(){
 let view=[];
 function renderStatus(){
   const q=$('q').value.toLowerCase(),fk=$('fk').value,fj=$('fj').value,fs=$('fs').value,ff=$('ff').value;
-  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='luar'?!r.inMaster:(ff==='kurang'?(r.sudah&&r.jml<SEC.length):(ff==='sudah')===r.sudah))));
+  view=rows.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!fk||r.kab===fk)&&(!fj||r.jenjang===fj)&&(!fs||r.status===fs)&&(!ff||(ff==='luar'?!r.inMaster:(ff==='kurang'?(r.sudah&&r.jml<SEC.length):(ff==='sudah'?(r.sudah&&r.jml>=SEC.length):!r.sudah)))));
   $('cnt').textContent=view.length+' sekolah';
   $('tstatus').innerHTML=`<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Jenjang</th><th>Status</th><th>Kabupaten</th><th>Kepala Sekolah</th><th>Terisi</th><th>Belum Diisi</th><th>Prestasi</th><th>Terakhir Kirim</th><th>Status</th></tr>`+
    view.map((r,i)=>{
-     const miss=missingSecs(r);
+     const miss=missingSecs(r),st=statusLabel(r);
+     const stCls=st==='Sudah'?'ok':(st==='Sebagian'?'part':'no');
+     const stTxt=st==='Sudah'?'✔ Sudah':(st==='Sebagian'?'◐ Sebagian':'✘ Belum');
      const missHtml=!r.sudah?'<span style="color:#94a3b8">Semua (01–09)</span>':(miss.length?`<span style="color:#b91c1c;font-size:.78rem">${esc(miss.join(', '))}</span>`:'<span style="color:#15803d;font-size:.78rem">✔ Lengkap</span>');
-     return `<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${missHtml}</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${r.sudah?'ok':'no'}">${r.sudah?'✔ Sudah':'✘ Belum'}</td></tr>`;
+     return `<tr><td>${i+1}</td><td>${esc(r.npsn)}</td><td>${esc(r.nama)}${!r.inMaster?' <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 5px;border-radius:4px">⚠ Luar Master</span>':''}</td><td>${esc(r.jenjang)}</td><td>${esc(r.status)}</td><td>${esc(r.kab)}</td><td>${esc(r.kepsek)}</td><td>${r.jml}/9</td><td>${missHtml}</td><td>${r.prestasi}</td><td>${r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-'}</td><td class="${stCls}">${stTxt}</td></tr>`;
    }).join('');
 }
 function renderPrestasi(){
@@ -499,7 +502,7 @@ function cmpRender(){
 }
 function csv(){
   const h=['NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian'];
-  const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu,r.sudah?'Sudah':'Belum']));
+  const L=[h].concat(view.map(r=>[r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu,statusLabel(r)]));
   const s='\ufeff'+L.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='rekap_pengisian_sekolah.csv';a.click();
 }
@@ -528,7 +531,7 @@ function objsToAoa(arr){
 }
 function downloadStatusXls(){
   const h=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
-  const aoa=[h].concat(view.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']));
+  const aoa=[h].concat(view.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',statusLabel(r),r.inMaster?'Ya':'Di luar Master']));
   saveSheetsXls([['Status_Pengisian',aoa]],'status_pengisian_sekolah');
 }
 function downloadPrestasiXls(){
@@ -541,7 +544,7 @@ function downloadPrestasiXls(){
 function downloadAllXls(){
   const sheets=[];
   const hSt=['No','NPSN','Sekolah','Jenjang','Status','Kabupaten','Kepala Sekolah','Bagian Terisi','Bagian Belum Diisi','Prestasi','Terakhir Kirim','Status Pengisian','Terdaftar Master'];
-  sheets.push(['Status_Pengisian',[hSt].concat(rows.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',r.sudah?'Sudah':'Belum',r.inMaster?'Ya':'Di luar Master']))]);
+  sheets.push(['Status_Pengisian',[hSt].concat(rows.map((r,i)=>[i+1,r.npsn,r.nama,r.jenjang,r.status,r.kab,r.kepsek,r.jml+'/9',missingText(r),r.prestasi,r.waktu?new Date(r.waktu).toLocaleString('id-ID'):'-',statusLabel(r),r.inMaster?'Ya':'Di luar Master']))]);
   const cmpAoa=[['Indikator','2025','2026','Selisih','Perubahan (%)','Jumlah Sekolah']].concat(METRICS.map(m=>{
     const sub=SCH.filter(x=>x.v25[m.k]!==null&&x.v25[m.k]!==undefined);
     const agg=a=>m.avg?(a.length?a.reduce((p,c)=>p+c,0)/a.length:0):a.reduce((p,c)=>p+c,0);

@@ -383,9 +383,10 @@ function renderAngSekolah(){
   const rpf=v=>v?'Rp '+Math.round(v).toLocaleString('id-ID'):'-';
   const show25=ay==='both'||ay==='2025',show26=ay==='both'||ay==='2026';
 
-  // Indikator ringkasan per jenis pagu penerimaan / bantuan
+  // Indikator ringkasan khusus 3 bantuan utama (BOS, BPOPP, Revitalisasi); bantuan lainnya tetap tampil di tabel & rekap
   const kYr=ay==='2025'?'25':'26';
-  $('angKpi').innerHTML=cols.map(c=>{
+  const kpiCols=cols.filter(c=>/^(bos|bpopp|revitalisasi)/i.test(c));
+  $('angKpi').innerHTML=kpiCols.map(c=>{
     let tp=0,tr=0,n25=0,n26=0,anom=0;
     baseList.forEach(r=>{
       const b=r.by[c];if(!b)return;

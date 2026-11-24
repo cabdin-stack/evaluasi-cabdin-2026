@@ -313,7 +313,7 @@ function addPrestasi(){const d=el(`<div class="row"><div class="grid">${PRESTASI
 addInd();addPrestasi();
 
 // ===== Anggaran: baris sumber dana + persentase otomatis =====
-const FIXED_ANG=['BOS','BPOPP','DAK','Revitalisasi','Bantuan Pendidikan Lain'];
+const FIXED_ANG=['BOS','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
 function addAng(nama=''){
   const fixed=!!nama,reqBB=(nama==='BOS'||nama==='BPOPP');
   const d=el(`<div class="row"><div class="grid">
@@ -645,9 +645,9 @@ function fillSample(){
   sampleMode=true;verifiedNpsn='';
   setNpsnStatus(false,'⚠ Mode DATA CONTOH (hanya untuk pratinjau/cetak contoh, tidak dapat dikirim ke server).');
   while(document.querySelectorAll('#prestasiRows .row').length<3)addPrestasi();
-  while(document.querySelectorAll('#angRows .row').length<6)addAng();
+  while(document.querySelectorAll('#angRows .row').length<5)addAng();
   document.querySelectorAll('#angRows .row').forEach((r,i)=>{
-    const pg=[1250000000,800000000,500000000,1500000000,100000000,50000000][i];
+    const pg=[1250000000,800000000,1500000000,100000000,50000000][i];
     const sm=r.querySelector('[name=sumber]');if(!sm.value)setVal(sm,'Dana Komite (contoh)');
     setVal(r.querySelector('[name=pagu_2025]'),Math.round(pg*0.92));setVal(r.querySelector('[name=realisasi_2025]'),Math.round(pg*0.92*(0.72+0.04*i)));
     setVal(r.querySelector('[name=pagu]'),pg);setVal(r.querySelector('[name=realisasi]'),Math.round(pg*(0.7+0.05*i)));

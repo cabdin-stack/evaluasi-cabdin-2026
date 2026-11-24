@@ -111,6 +111,7 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 <div class="card"><h2>Daftar Realisasi Anggaran 2025 &amp; 2026 per Sekolah (Per Bantuan)</h2>
 <p style="font-size:.8rem;margin:0 0 8px;color:#475569">Catatan: Realisasi anggaran tahun 2026 sementara sampai dengan bulan <b>Oktober 2026</b>. Klik kartu indikator di bawah atau pilih filter untuk menyaring pagu penerimaan tertentu.</p>
 <div id="angKpi" class="ang-kpis"></div>
+<div class="tw" style="margin-bottom:12px"><table id="tangJenj"></table></div>
 <div class="bar">
 <input id="aq" placeholder="Cari nama/NPSN" oninput="renderAngSekolah()">
 <select id="ab" onchange="renderAngSekolah()"><option value="">Semua Pagu Penerimaan</option></select>
@@ -230,7 +231,9 @@ setInterval(()=>{
 if(getSession()){$('login').style.display='none';$('loadingBox').style.display='';load();}
 
 function show(d){
-  D=d;$('login').style.display='none';$('loadingBox').style.display='none';$('app').style.display='';$('hbtn').style.display='flex';
+  D=d;
+  if(Array.isArray(D['02_Anggaran_Rinci']))D['02_Anggaran_Rinci']=D['02_Anggaran_Rinci'].filter(r=>!/^dak\b/i.test(String(r.sumber||'').trim()));
+  $('login').style.display='none';$('loadingBox').style.display='none';$('app').style.display='';$('hbtn').style.display='flex';
   updateSessInfo();build();
 }
 const g=k=>D[k]||[];
@@ -283,7 +286,7 @@ function build(){
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderAngAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
 }
-const MAIN_BANTUAN=['BOS','BPOPP','DAK','Revitalisasi','Bantuan Pendidikan Lain'];
+const MAIN_BANTUAN=['BOS','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
 function buildAngPivot(){
   const schMap={};rows.forEach(r=>schMap[r.npsn]=r);
   const bySch={},sumberSet=new Set(),has25Rinci=new Set();
@@ -328,11 +331,54 @@ function pickAngBantuan(name){
   sel.value=(sel.value===name?'':name);
   renderAngSekolah();
 }
+function countPenerimaPerJenjang(filterKab='',filterStat=''){
+  const schMap={};rows.forEach(r=>schMap[r.npsn]=r);
+  const J=['SMA','SMK','SLB'],res={};
+  J.forEach(j=>res[j]={bos25:new Set(),bos26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()});
+  const getJ=r=>{
+    const k=String(r.NPSN||'').trim(),s=schMap[k];
+    const j=String((s&&s.jenjang)||r.Jenjang||'').trim().toUpperCase();
+    const kab=(s&&s.kab)||normKab(r.Kabupaten);
+    const st=(s&&s.status)||normStat(r.Status);
+    if(!res[j])return null;
+    if(filterKab&&kab!==filterKab)return null;
+    if(filterStat&&st!==filterStat)return null;
+    return {k,j};
+  };
+  g('02_Anggaran_Rinci').forEach(r=>{
+    const info=getJ(r);if(!info)return;
+    const h25=num(r.pagu_2025)>0||num(r.realisasi_2025)>0;
+    const h26=num(r.pagu)>0||num(r.realisasi)>0;
+    const sm=String(r.sumber||'').trim(),o=res[info.j];
+    if(/^bos\b/i.test(sm)){if(h25)o.bos25.add(info.k);if(h26)o.bos26.add(info.k)}
+    if(/bpopp/i.test(sm)){if(h25)o.bpopp25.add(info.k);if(h26)o.bpopp26.add(info.k)}
+    if(/revitalisasi/i.test(sm)){if(h25)o.revit25.add(info.k);if(h26)o.revit26.add(info.k)}
+  });
+  g('03_Sarpras_SDM').forEach(r=>{
+    const info=getJ(r);if(!info)return;
+    if(String(r.revit_status||'').trim()==='Ya')res[info.j].revit26.add(info.k);
+  });
+  const out={},tot={bos25:0,bos26:0,bpopp25:0,bpopp26:0,revit25:0,revit26:0};
+  J.forEach(j=>{
+    out[j]={};
+    Object.keys(tot).forEach(k=>{out[j][k]=res[j][k].size;tot[k]+=out[j][k]});
+  });
+  return {byJ:out,tot};
+}
+function penerimaJenjangTableHTML(filterKab='',filterStat=''){
+  const {byJ,tot}=countPenerimaPerJenjang(filterKab,filterStat);
+  const J=['SMA','SMK','SLB'];
+  return `<tr><th rowspan="2">Jenjang</th><th colspan="2" style="text-align:center">Penerima BOS (Lembaga)</th><th colspan="2" style="text-align:center">Penerima BPOPP (Lembaga)</th><th colspan="2" style="text-align:center">Penerima Revitalisasi (Lembaga)</th></tr>
+  <tr><th style="text-align:center">2025</th><th style="text-align:center">2026</th><th style="text-align:center">2025</th><th style="text-align:center">2026</th><th style="text-align:center">2025</th><th style="text-align:center">2026</th></tr>`+
+  J.map(j=>`<tr><td><b>${j}</b></td><td style="text-align:center">${byJ[j].bos25}</td><td style="text-align:center"><b>${byJ[j].bos26}</b></td><td style="text-align:center">${byJ[j].bpopp25}</td><td style="text-align:center"><b>${byJ[j].bpopp26}</b></td><td style="text-align:center">${byJ[j].revit25}</td><td style="text-align:center"><b>${byJ[j].revit26}</b></td></tr>`).join('')+
+  `<tr class="tot" style="background:#eef3ff;font-weight:700"><td>TOTAL</td><td style="text-align:center">${tot.bos25}</td><td style="text-align:center">${tot.bos26}</td><td style="text-align:center">${tot.bpopp25}</td><td style="text-align:center">${tot.bpopp26}</td><td style="text-align:center">${tot.revit25}</td><td style="text-align:center">${tot.revit26}</td></tr>`;
+}
 function renderAngSekolah(){
   const {cols,list}=buildAngPivot();
   const selB=$('ab'),curB=selB.value;
   selB.innerHTML='<option value="">Semua Pagu Penerimaan</option>'+cols.map(c=>`<option value="${esc(c)}"${c===curB?' selected':''}>${esc(c)}</option>`).join('');
   const ab=selB.value,q=$('aq').value.toLowerCase(),ay=$('ay').value,ak=$('ak').value,aj=$('aj').value,as=$('as').value;
+  $('tangJenj').innerHTML=penerimaJenjangTableHTML(ak,as);
   const baseList=list.filter(r=>(!q||(String(r.nama)+r.npsn).toLowerCase().includes(q))&&(!ak||r.kab===ak)&&(!aj||r.jenjang===aj)&&(!as||r.status===as));
   const rpf=v=>v?'Rp '+Math.round(v).toLocaleString('id-ID'):'-';
   const show25=ay==='both'||ay==='2025',show26=ay==='both'||ay==='2026';
@@ -340,16 +386,19 @@ function renderAngSekolah(){
   // Indikator ringkasan per jenis pagu penerimaan / bantuan
   const kYr=ay==='2025'?'25':'26';
   $('angKpi').innerHTML=cols.map(c=>{
-    let tp=0,tr=0,nSch=0,anom=0;
+    let tp=0,tr=0,n25=0,n26=0,anom=0;
     baseList.forEach(r=>{
       const b=r.by[c];if(!b)return;
+      if(b.p25||b.r25)n25++;
+      if(b.p26||b.r26)n26++;
       const p=kYr==='25'?b.p25:b.p26,rl=kYr==='25'?b.r25:b.r26,ov=kYr==='25'?b.over25:b.over26;
-      if(p||rl){nSch++;if(ov)anom++;else{tp+=p;tr+=rl}}
+      if(p||rl){if(ov)anom++;else{tp+=p;tr+=rl}}
     });
     const pct=tp?(tr/tp*100):0,col=pct>=80?'#16a34a':(pct>=50?'#d97706':'#dc2626');
     const lblYr=kYr==='25'?'2025':'2026 s.d. Okt';
+    const nLbl=ay==='both'?`2025: ${n25} · 2026: ${n26}`:(ay==='2025'?`${n25} lembaga`:`${n26} lembaga`);
     return `<div class="ang-k${ab===c?' on':''}" onclick="pickAngBantuan('${esc(c).replace(/'/g,"\\'")}')">
-      <div class="ak-h"><span>${esc(c)}</span><span style="font-size:.72rem;color:#64748b;font-weight:600">${nSch} sklh</span></div>
+      <div class="ak-h"><span>${esc(c)}</span><span style="font-size:.7rem;color:#1d4ed8;background:#dbeafe;padding:1px 7px;border-radius:99px;font-weight:700">${nLbl}</span></div>
       <div class="ak-p" style="color:${tp?col:'#64748b'}">${tp?pct.toFixed(1)+'%':'-'}</div>
       <div class="ak-bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>
       <div class="ak-sub">Pagu ${lblYr}: <b>${rpf(tp)}</b><br>Real: <b>${rpf(tr)}</b>${anom?` · <span style="color:#b91c1c">${anom} anomali</span>`:''}</div>
@@ -422,6 +471,24 @@ function renderAngAnom(){
   $('tangAnom').innerHTML='<tr><th>No</th><th>NPSN</th><th>Sekolah</th><th>Status</th><th>Sumber Dana</th><th>Pagu</th><th>Realisasi</th><th>% Realisasi</th></tr>'+
     bad.map((r,i)=>{const p=num(r.pagu),rl=num(r.realisasi);return `<tr><td>${i+1}</td><td>${esc(r.NPSN)}</td><td>${esc(r.Nama_Sekolah)}</td><td>${esc(normStat(r.Status))}</td><td>${esc(r.sumber)}</td><td style="text-align:right">${rpf(p)}</td><td style="text-align:right;color:#b91c1c;font-weight:700">${rpf(rl)}</td><td style="text-align:center;color:#b91c1c;font-weight:700">${p?(rl/p*100).toFixed(1)+'%':'Pagu 0'}</td></tr>`}).join('');
 }
+function countPenerimaBantuan(){
+  const ang=g('02_Anggaran_Rinci'),srp=g('03_Sarpras_SDM');
+  const s={bos25:new Set(),bos26:new Set(),bpopp25:new Set(),bpopp26:new Set(),revit25:new Set(),revit26:new Set()};
+  ang.forEach(r=>{
+    const k=String(r.NPSN||'').trim();if(!k)return;
+    const h25=num(r.pagu_2025)>0||num(r.realisasi_2025)>0;
+    const h26=num(r.pagu)>0||num(r.realisasi)>0;
+    const sm=String(r.sumber||'').trim();
+    if(/^bos\b/i.test(sm)){if(h25)s.bos25.add(k);if(h26)s.bos26.add(k)}
+    if(/bpopp/i.test(sm)){if(h25)s.bpopp25.add(k);if(h26)s.bpopp26.add(k)}
+    if(/revitalisasi/i.test(sm)){if(h25)s.revit25.add(k);if(h26)s.revit26.add(k)}
+  });
+  srp.forEach(r=>{
+    const k=String(r.NPSN||'').trim();
+    if(k&&String(r.revit_status||'').trim()==='Ya')s.revit26.add(k);
+  });
+  return {bos25:s.bos25.size,bos26:s.bos26.size,bpopp25:s.bpopp25.size,bpopp26:s.bpopp26.size,revit25:s.revit25.size,revit26:s.revit26.size};
+}
 function kpi(){
   const hasMaster=g('Master_Sekolah').length>0;
   const masterRows=hasMaster?rows.filter(r=>r.inMaster):rows;
@@ -434,8 +501,10 @@ function kpi(){
   const guru=prof.reduce((a,r)=>a+val(r,'guru_pns')+val(r,'guru_pppk')+val(r,'guru_pppk_pw')+val(r,'guru_gty'),0);
   const tp=ang.reduce((a,r)=>a+num(r.pagu),0),tr=ang.reduce((a,r)=>a+num(r.realisasi),0);
   const nas26=pr26.filter(r=>r.tingkat==='Nasional'||r.tingkat==='Internasional').length;
+  const pen=countPenerimaBantuan();
   const K=[[sudah+(hasMaster?' / '+tot:''),'Sekolah sudah mengisi'+(luarCount?` (+${luarCount} di luar Master)`:'')],[siswa.toLocaleString('id-ID'),'Total siswa (2026)'],[guru.toLocaleString('id-ID'),'Total guru (2026)'],
-   [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026 s.d. Okt'+(badAng?` (${badAng} anomali dikecualikan)`:'')]];
+   [pr26.length,'Prestasi 2026'+(pr25?` (+${pr25} di 2025)`:'')],[nas26,'Prestasi Nas/Int (2026)'],[tp?(tr/tp*100).toFixed(1)+'%':'-','Realisasi anggaran 2026 s.d. Okt'+(badAng?` (${badAng} anomali dikecualikan)`:'')],
+   [pen.bos25+' / '+pen.bos26,'Penerima BOS (2025 / 2026)'],[pen.bpopp25+' / '+pen.bpopp26,'Penerima BPOPP (2025 / 2026)'],[pen.revit25+' / '+pen.revit26,'Penerima Revitalisasi (2025 / 2026)']];
   $('kpi').innerHTML=K.map(k=>`<div><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
 }
 function mk(title,type,labels,sets,opts={}){
@@ -711,6 +780,7 @@ function printRekapCabdin(mode='lengkap'){
   const now=new Date(),tgl=now.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
   const tglJam=now.toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const totSiswa26=sumY(prof,['siswa_L','siswa_P'],'2026'), totGuru26=sumY(prof,['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2026');
+  const pen=countPenerimaBantuan();
 
   const html=`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>${isFull?'Laporan Lengkap':'Ringkasan Eksekutif'} Evaluasi Kinerja 2026 - Cabdin Jember</title>
 <style>
@@ -823,6 +893,8 @@ ${cmpRow('↳ Tendik Non-ASN',sumY(prof,['tendik_non'],'2025'),sumY(prof,['tendi
 ${noteBlock(prof,'kebutuhan','Peta Kebutuhan & Pemerataan Layanan')}
 
 ${secHdr('02','ANGGARAN DAN TATA KELOLA')}
+<p class="sub"><b>Jumlah Lembaga Penerima BOS, BPOPP, dan Revitalisasi per Jenjang (2025 &amp; 2026)</b></p>
+<table>${penerimaJenjangTableHTML()}</table>
 <p class="mut">Catatan: Realisasi anggaran tahun 2026 sementara sampai dengan bulan Oktober 2026 (baris anomali &gt;100% dikecualikan).</p>
 <table><thead><tr><th>Sumber Dana</th><th style="text-align:right">Pagu (Rp)</th><th style="text-align:right">Realisasi s.d. Okt 2026 (Rp)</th><th width="160">% Realisasi</th></tr></thead><tbody>${tblAng||'<tr><td colspan="4" align="center">Belum ada data anggaran</td></tr>'}
 <tr class="tot"><th>TOTAL</th><th style="text-align:right" class="num">${rpf(totP)}</th><th style="text-align:right" class="num">${rpf(totR)}</th><th>${totP?miniBar(pctAng):'-'}</th></tr></tbody></table>

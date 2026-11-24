@@ -150,9 +150,9 @@ const missingSecs=r=>SEC.filter(s=>!r.secs.has(s)).map(s=>SEC_LBL[s]);
 const missingText=r=>!r.sudah?'Semua (01–09)':(r.jml>=SEC.length?'Lengkap':missingSecs(r).join(', '));
 const statusLabel=r=>!r.sudah?'Belum':(r.jml>=SEC.length?'Sudah':'Sebagian');
 
-const SESSION_HOURS=8,SESSION_KEY='cabdin2026_adm';
+const SESSION_MINUTES=20,SESSION_KEY='cabdin2026_adm';
 function saveSession(pw){
-  const v=JSON.stringify({pw,exp:Date.now()+SESSION_HOURS*3600*1000});
+  const v=JSON.stringify({pw,exp:Date.now()+SESSION_MINUTES*60*1000});
   try{localStorage.setItem(SESSION_KEY,v)}catch(e){}
   try{sessionStorage.setItem(SESSION_KEY,v)}catch(e){}
 }
@@ -175,8 +175,8 @@ function updateSessInfo(){
   const el=$('sessInfo'),s=getSession();
   if(!el||!s)return;
   const rem=Math.max(0,s.exp-Date.now());
-  const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000);
-  el.textContent=`⏱ Sesi: ${h}j ${m}m`;
+  const m=Math.ceil(rem/60000);
+  el.textContent=`⏱ Sesi: ${m} menit`;
 }
 async function fetchAdmin(pw){
   return (await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',pw})})).json();
@@ -213,10 +213,10 @@ async function load(){
 function logout(){clearSession();location.reload()}
 setInterval(()=>{
   if($('app').style.display!=='none'){
-    if(!getSession()){alert('Sesi admin telah berakhir ('+SESSION_HOURS+' jam). Silakan login kembali.');logout()}
+    if(!getSession()){alert('Sesi admin telah berakhir ('+SESSION_MINUTES+' menit). Silakan login kembali.');logout()}
     else updateSessInfo();
   }
-},30000);
+},15000);
 if(getSession()){$('login').style.display='none';$('loadingBox').style.display='';load();}
 
 function show(d){

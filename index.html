@@ -153,7 +153,7 @@ const SECTIONS = [
 {id:'01_Profil',title:'01. Profil dan Potret Pendidikan',groups:[
  {h:'Jumlah Siswa, Guru, dan Tenaga Kependidikan',f:[
   N('rombel','Jumlah Rombel'),N('siswa_L','Siswa Laki-laki'),N('siswa_P','Siswa Perempuan'),
-  N('siswa_abk','Siswa Berkebutuhan Khusus / Inklusi'),N('siswa_kurangmampu','Siswa Kurang Mampu (KIP/PIP)'),
+  N('siswa_abk','Siswa Berkebutuhan Khusus / Inklusi'),N('siswa_kurangmampu','Siswa KIP dan Prasejahtera'),
   N('guru_pns','Guru PNS'),N('guru_pppk','Guru PPPK Penuh Waktu'),N('guru_pppk_pw','Guru PPPK Paruh Waktu'),N('guru_gty','Guru Non-ASN (GTY/GTT)'),N('guru_sertifikasi','Guru Bersertifikat Pendidik'),
   N('tendik_pns','Tendik PNS'),N('tendik_pppk','Tendik PPPK Penuh Waktu'),N('tendik_pppk_pw','Tendik PPPK Paruh Waktu'),N('tendik_non','Tendik Non-ASN')]},
  {h:'Sebaran dan Kondisi Satuan Pendidikan',f:[
@@ -284,9 +284,10 @@ SECTIONS.forEach((s,i)=>{
     <button type="button" class="btn sec" onclick="addPrestasi()">+ Tambah Prestasi</button>`;
   } else {
     if(s.custom==='anggaran')h+=`<h3>Pagu dan Realisasi Anggaran 2025 &amp; 2026 (Rupiah, angka penuh)</h3>
-    <div class="note"><b>Catatan:</b> Isian <b>Realisasi Anggaran 2026</b> sementara diisi <b>sampai dengan bulan Oktober 2026</b>.</div>
+    <div class="note"><b>Catatan:</b> Isian <b>Realisasi Anggaran 2026</b> sementara diisi <b>sampai dengan bulan Oktober 2026</b>. Sumber dana tambahan (<b>BANPEM</b>, <b>KOMITE</b>, dll.) bersifat <b>opsional</b> — klik <b>+ Tambah Sumber Dana</b> bila ada.</div>
+    <datalist id="bantuanOpts"><option value="BANPEM"><option value="KOMITE"><option value="CSR / Hibah"><option value="Bantuan Pendidikan Lain"></datalist>
     <div id="angRows"></div>
-    <button type="button" class="btn sec" onclick="addAng()">+ Tambah Sumber Dana</button>
+    <button type="button" class="btn sec" onclick="addAng()">+ Tambah Sumber Dana (BANPEM / KOMITE / Lainnya)</button>
     <div class="grid" style="margin-top:14px;background:#f8fafc;border:1px solid #cbd5e1;padding:12px;border-radius:10px">
       <div><label>TOTAL Realisasi 2025</label><input name="total_real_2025" readonly></div>
       <div><label>TOTAL % Realisasi 2025</label><input name="total_persen_2025" readonly></div>
@@ -313,11 +314,11 @@ function addPrestasi(){const d=el(`<div class="row"><div class="grid">${PRESTASI
 addInd();addPrestasi();
 
 // ===== Anggaran: baris sumber dana + persentase otomatis =====
-const FIXED_ANG=['BOSP+BOSkinerja','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
+const FIXED_ANG=['BOSP+BOSkinerja','BPOPP','Revitalisasi'];
 function addAng(nama=''){
   const fixed=!!nama,reqBB=(nama==='BOSP+BOSkinerja'||nama==='BPOPP');
   const d=el(`<div class="row"><div class="grid">
-   <div class="full"><label>Sumber Dana${reqBB?' (Wajib diisi *)':''}</label><input name="sumber" value="${nama}" ${fixed?'readonly':'placeholder="mis. Dana Komite / CSR / Hibah"'}></div>
+   <div class="full"><label>Sumber Dana${reqBB?' (Wajib diisi *)':' (Opsional)'}</label><input name="sumber" value="${nama}" ${fixed?'readonly':'list="bantuanOpts" placeholder="Pilih BANPEM / KOMITE / ketik sumber dana lain"'}></div>
    <div><label>Pagu 2025 (Rp)</label><input type="number" min="0" name="pagu_2025"></div>
    <div><label>Realisasi 2025 (Rp)</label><input type="number" min="0" name="realisasi_2025"></div>
    <div><label>% Realisasi 2025</label><input name="persen_2025" readonly placeholder="otomatis"></div>
@@ -667,7 +668,7 @@ function fillSample(){
   while(document.querySelectorAll('#angRows .row').length<5)addAng();
   document.querySelectorAll('#angRows .row').forEach((r,i)=>{
     const pg=[1250000000,800000000,1500000000,100000000,50000000][i];
-    const sm=r.querySelector('[name=sumber]');if(!sm.value)setVal(sm,'Dana Komite (contoh)');
+    const sm=r.querySelector('[name=sumber]');if(!sm.value)setVal(sm,i===3?'BANPEM':'KOMITE');
     setVal(r.querySelector('[name=pagu_2025]'),Math.round(pg*0.92));setVal(r.querySelector('[name=realisasi_2025]'),Math.round(pg*0.92*(0.72+0.04*i)));
     setVal(r.querySelector('[name=pagu]'),pg);setVal(r.querySelector('[name=realisasi]'),Math.round(pg*(0.7+0.05*i)));
   });

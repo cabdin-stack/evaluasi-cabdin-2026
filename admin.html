@@ -305,7 +305,7 @@ function build(){
   rows.sort((a,b)=>(b.sudah-a.sudah)||String(a.nama).localeCompare(String(b.nama)));
   kpi();charts_();renderAngAnom();renderDataAnom();renderStatus();renderAngSekolah();renderPrestasi();renderIndikator();cmpInit();
 }
-const MAIN_BANTUAN=['BOSP+BOSkinerja','BPOPP','Revitalisasi','Bantuan Pendidikan Lain'];
+const MAIN_BANTUAN=['BOSP+BOSkinerja','BPOPP','Revitalisasi','BANPEM','KOMITE','Bantuan Pendidikan Lain'];
 function buildAngPivot(){
   const schMap={};rows.forEach(r=>schMap[r.npsn]=r);
   const bySch={},sumberSet=new Set(),has25Rinci=new Set();
@@ -976,7 +976,7 @@ ${secHdr('01','PROFIL DAN POTRET PENDIDIKAN')}
 ${cmpRow('Jumlah Rombel',sumY(prof,['rombel'],'2025'),sumY(prof,['rombel'],'2026'))}
 ${cmpRow('Jumlah Siswa (L+P)',sumY(prof,['siswa_L','siswa_P'],'2025'),totSiswa26)}
 ${cmpRow('Siswa Berkebutuhan Khusus / Inklusi',sumY(prof,['siswa_abk'],'2025'),sumY(prof,['siswa_abk'],'2026'))}
-${cmpRow('Siswa Kurang Mampu (KIP/PIP)',sumY(prof,['siswa_kurangmampu'],'2025'),sumY(prof,['siswa_kurangmampu'],'2026'))}
+${cmpRow('Siswa KIP dan Prasejahtera',sumY(prof,['siswa_kurangmampu'],'2025'),sumY(prof,['siswa_kurangmampu'],'2026'))}
 ${cmpRow('Total Guru (PNS + PPPK Penuh/Paruh Waktu + Non-ASN)',sumY(prof,['guru_pns','guru_pppk','guru_pppk_pw','guru_gty'],'2025'),totGuru26)}
 ${cmpRow('↳ Guru PNS',sumY(prof,['guru_pns'],'2025'),sumY(prof,['guru_pns'],'2026'))}
 ${cmpRow('↳ Guru PPPK Penuh Waktu',sumY(prof,['guru_pppk'],'2025'),sumY(prof,['guru_pppk'],'2026'))}

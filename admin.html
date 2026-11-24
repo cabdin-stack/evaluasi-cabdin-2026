@@ -48,12 +48,20 @@ th,td{border:1px solid var(--b);padding:5px 7px;text-align:left}th{background:#e
 </head>
 <body>
 <header><h1>🔐 Dashboard Admin – Evaluasi Kinerja Pendidikan 2026 · Cabdin Wilayah Jember</h1>
-<div id="hbtn" style="display:none"><a class="btn sec" href="index.html">Form Sekolah</a>
+<div id="hbtn" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+<span id="sessInfo" style="font-size:.78rem;background:rgba(255,255,255,.18);padding:5px 10px;border-radius:99px"></span>
+<a class="btn sec" href="index.html">Form Sekolah</a>
 <button class="btn sec" onclick="load()">⟳ Muat Ulang</button>
 <button class="btn sec" onclick="print()">🖨 Cetak Dashboard</button>
 <button class="btn" style="background:#0f766e" onclick="downloadAllXls()">📊 Unduh Excel</button>
 <button class="btn" style="background:#15803d" onclick="printRekapCabdin()">📄 Cetak Rekap Agenda 2026</button>
 <button class="btn" style="background:#b91c1c" onclick="logout()">Keluar</button></div></header>
+
+<div id="loadingBox" class="card" style="display:none;max-width:420px;margin:80px auto;text-align:center">
+<h2>⟳ Memuat Dashboard Admin...</h2>
+<p id="loadMsg" style="font-size:.88rem;color:#475569">Sesi login Anda masih aktif. Sedang mengambil data terbaru...</p>
+<button class="btn sec" id="retryBtn" style="display:none" onclick="load()">Coba Muat Ulang</button>
+</div>
 
 <div id="login" class="card">
 <h2>Login Admin</h2>
@@ -142,14 +150,32 @@ const missingText=r=>!r.sudah?'Semua (01–09)':(r.jml>=SEC.length?'Lengkap':mis
 const statusLabel=r=>!r.sudah?'Belum':(r.jml>=SEC.length?'Sudah':'Sebagian');
 
 const SESSION_HOURS=8,SESSION_KEY='cabdin2026_adm';
-function saveSession(pw){try{localStorage.setItem(SESSION_KEY,JSON.stringify({pw,exp:Date.now()+SESSION_HOURS*3600*1000}))}catch(e){}}
+function saveSession(pw){
+  const v=JSON.stringify({pw,exp:Date.now()+SESSION_HOURS*3600*1000});
+  try{localStorage.setItem(SESSION_KEY,v)}catch(e){}
+  try{sessionStorage.setItem(SESSION_KEY,v)}catch(e){}
+}
+function clearSession(){
+  try{localStorage.removeItem(SESSION_KEY)}catch(e){}
+  try{sessionStorage.removeItem(SESSION_KEY);sessionStorage.removeItem('adm')}catch(e){}
+}
 function getSession(){
-  try{
-    const raw=localStorage.getItem(SESSION_KEY);if(!raw)return null;
-    const s=JSON.parse(raw);
-    if(!s||!s.pw||Date.now()>s.exp){localStorage.removeItem(SESSION_KEY);return null}
-    return s;
-  }catch(e){return null}
+  for(const st of [localStorage,sessionStorage]){
+    try{
+      const raw=st.getItem(SESSION_KEY);if(!raw)continue;
+      const s=JSON.parse(raw);
+      if(!s||!s.pw||Date.now()>s.exp){clearSession();return null}
+      return s;
+    }catch(e){}
+  }
+  return null;
+}
+function updateSessInfo(){
+  const el=$('sessInfo'),s=getSession();
+  if(!el||!s)return;
+  const rem=Math.max(0,s.exp-Date.now());
+  const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000);
+  el.textContent=`⏱ Sesi: ${h}j ${m}m`;
 }
 async function fetchAdmin(pw){
   return (await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'admin',pw})})).json();
@@ -168,25 +194,33 @@ async function doLogin(){
 async function load(){
   const s=getSession();
   if(!s){logout();return}
-  const btn=$('lbtn');
-  if($('app').style.display==='none'){btn.disabled=true;btn.textContent='Memuat sesi...';$('lerr').textContent='';}
+  if($('app').style.display==='none'){
+    $('login').style.display='none';
+    $('loadingBox').style.display='';
+    $('loadMsg').textContent='Sesi login Anda masih aktif. Sedang mengambil data terbaru...';
+    $('retryBtn').style.display='none';
+  }
   try{
     const r=await fetchAdmin(s.pw);
     if(r.ok){saveSession(s.pw);show(r.data);}
-    else logout();
+    else{clearSession();$('loadingBox').style.display='none';$('login').style.display='';$('lerr').textContent=r.error||'Sesi tidak valid, silakan login ulang.';}
   }catch(e){
-    $('lerr').textContent='Gagal memuat data (coba muat ulang): '+e;
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='Masuk';}
+    $('loadMsg').textContent='Gagal memuat data: '+e;
+    $('retryBtn').style.display='';
   }
 }
-function logout(){localStorage.removeItem(SESSION_KEY);sessionStorage.removeItem('adm');location.reload()}
-setInterval(()=>{if($('app').style.display!=='none'&&!getSession()){alert('Sesi admin telah berakhir ('+SESSION_HOURS+' jam). Silakan login kembali.');logout()}},60000);
-if(getSession())load();
+function logout(){clearSession();location.reload()}
+setInterval(()=>{
+  if($('app').style.display!=='none'){
+    if(!getSession()){alert('Sesi admin telah berakhir ('+SESSION_HOURS+' jam). Silakan login kembali.');logout()}
+    else updateSessInfo();
+  }
+},30000);
+if(getSession()){$('login').style.display='none';$('loadingBox').style.display='';load();}
 
 function show(d){
-  D=d;$('login').style.display='none';$('app').style.display='';$('hbtn').style.display='';
-  build();
+  D=d;$('login').style.display='none';$('loadingBox').style.display='none';$('app').style.display='';$('hbtn').style.display='flex';
+  updateSessInfo();build();
 }
 const g=k=>D[k]||[];
 function build(){
